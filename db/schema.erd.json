@@ -1506,6 +1506,7 @@
           "03h7y0179n9e4e4gq6bltm8u5",
           "03h7y0179n9e4e4gq6d8q0oeo",
           "03h7y0179n9e4e4gq6esyn8q5",
+          "03hbiu3y515nu7h8wq2r5rlg5",
           "03h7y0179n9e4e4gq6i0rlxu9",
           "03h7y0179n9e4e4gq6ilco0kq"
         ],
@@ -6927,6 +6928,14 @@
         "name": "last_written_at",
         "comment": "마지막으로 고친 시각",
         "dataType": "timestamptz",
+        "options": 0
+      },
+      "03hbiu3y515nu7h8wq2r5rlg5": {
+        "id": "03hbiu3y515nu7h8wq2r5rlg5",
+        "tableId": "03h7y0179n9e4e4gq69098pnw",
+        "name": "sheet_hash",
+        "comment": "마지막 장부 행의 앱 서명",
+        "dataType": "text",
         "options": 0
       },
       "03h7y0179n9e4e4gq6n72rqhb": {

@@ -3,7 +3,7 @@ import { guardedLedgerFetch } from "./ledger-guarded-fetch";
 import { openLedgerJobCredential } from "./ledger-job-credential";
 import { googleLedgerRefresh } from "./ledger-refresh";
 import { ledgerSheetSetup } from "./ledger-sheet-setup";
-import { auditLedgerSheet, writeLedgerSheet } from "./ledger-sheet-write";
+import { auditLedgerSheet, ledgerRowDigest, writeLedgerSheet } from "./ledger-sheet-write";
 import { createLedgerWriteHandler, type LedgerWriteSnapshot } from "./ledger-write-handler";
 import type { Services } from "./services";
 import type { Settings } from "./settings";
@@ -21,6 +21,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         uncertain: boolean;
         auditing: boolean;
         order_id: string;
+        expected_hash: string | null;
       }>("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [item.id, ctx.leaseUntil]);
       const row = result.rows[0];
       if (!row) return null;
@@ -34,6 +35,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         shopId: db.scope.shopId,
         eventId: item.id,
         orderId: row.order_id,
+        expectedDigest: row.expected_hash,
         uncertain: row.uncertain,
         auditing: row.auditing,
         linkId: row.link_id,
@@ -74,15 +76,27 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         eventId: row.eventId,
         orderId: row.orderId,
         uncertain: row.uncertain,
+        hashKey: key,
+        expectedDigest: row.expectedDigest ?? null,
       };
       if (row.auditing) {
         const result = await auditLedgerSheet(input, { fetch: bounded });
         return { status: result === "ok" ? "audit_ok" : result === "missing" ? "audit_missing" : "audit_duplicate" };
       }
       await writeLedgerSheet(input, { fetch: bounded });
+      const sheetHash = await ledgerRowDigest(key, [
+        ...row.values,
+        row.eventId.replaceAll("-", "").toLowerCase(),
+        row.orderId.replaceAll("-", "").toLowerCase(),
+      ]);
       return {
         status: "written",
-        columns: { columns: setup.columns, movedRight: setup.movedRight, ownershipToken: setup.ownershipToken },
+        columns: {
+          columns: setup.columns,
+          movedRight: setup.movedRight,
+          ownershipToken: setup.ownershipToken,
+          sheetHash,
+        },
       };
     },
     async finish(db, item, ctx, result) {

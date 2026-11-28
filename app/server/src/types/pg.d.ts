@@ -29,6 +29,8 @@ declare module "pg" {
     query<R = Record<string, unknown>>(text: string, values?: readonly unknown[]): Promise<QueryResult<R>>;
     end(): Promise<void>;
     on(event: "error", listener: (err: Error) => void): this;
+    once(event: "error" | "end", listener: () => void): this;
+    off(event: "error" | "end", listener: () => void): this;
   }
 
   /** 서버가 보낸 오류. code는 SQLSTATE. message·detail에는 넣은 값이 들어갈 수 있어 응답·로그에 싣지 않는다. */

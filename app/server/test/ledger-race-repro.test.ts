@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { writeLedgerSheet } from "../src/ledger-sheet-write";
+import { ledgerRowDigest, writeLedgerSheet } from "../src/ledger-sheet-write";
 import { Secret } from "../src/settings";
 
 const file = "synthetic_sheet_1234567890",
@@ -10,7 +10,16 @@ const input = {
   file,
   tab: "장부",
   access: new Secret("fake"),
-  setup: { sheetId: 1, start: 0, end: 14, movedRight: false, ownershipToken: "test", columns: [] },
+  hashKey: new Secret("synthetic-hash-key"),
+  setup: {
+    sheetId: 1,
+    start: 0,
+    end: 14,
+    sheetColumnCount: 14,
+    movedRight: false,
+    ownershipToken: "test",
+    columns: [],
+  },
   values: ["ABC123", "이름", "", "", "", "", 0, "", "", 0, "", ""],
   shopId: crypto.randomUUID(),
   linkId: crypto.randomUUID(),
@@ -34,6 +43,11 @@ const prior = (order: string, id: string) => [
   id.replaceAll("-", ""),
 ];
 
+const withDigest = async () => ({
+  ...input,
+  expectedDigest: await ledgerRowDigest(input.hashKey, prior("ABC123", orderId)),
+});
+
 it("다른 주문이 대상 위치로 이동해 덮였으면 원래 값을 빈 행에 되살리고 알린다", async () => {
   let rows: (string | number)[][] = [prior("ABC123", orderId), prior("XYZ789", otherId)];
   const beforeOther = prior("XYZ789", otherId);
@@ -44,7 +58,7 @@ it("다른 주문이 대상 위치로 이동해 덮였으면 원래 값을 빈 �
       reads++;
       const path = decodeURIComponent(String(raw));
       if (path.includes("!A:A")) return Response.json({ values: [["주문번호"], ...rows.map((r) => [r[0]])] });
-      if (path.includes("!N")) return Response.json({ values: rows.map((r) => [r[13]]) });
+      if (path.includes("!A2:N2")) return Response.json({ values: [rows[0]] });
       return Response.json({ values: [["header"], ...rows] });
     }
     const req = JSON.parse(String(init?.body)).requests[0];
@@ -64,10 +78,10 @@ it("다른 주문이 대상 위치로 이동해 덮였으면 원래 값을 빈 �
       );
     return Response.json({ spreadsheetId: file, replies: [{}] });
   };
-  await expect(writeLedgerSheet(input, { fetch: send })).rejects.toThrow();
+  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).rejects.toThrow();
   expect(rows).toContainEqual(beforeOther);
   expect(writes).toBe(2);
-  expect(reads).toBe(4);
+  expect(reads).toBe(5);
 });
 it("우리 열 5000행을 넘으면 어떠한 쓰기도 하지 않는다", async () => {
   let writes = 0;
@@ -77,7 +91,7 @@ it("우리 열 5000행을 넘으면 어떠한 쓰기도 하지 않는다", async
     writes++;
     return Response.json({ spreadsheetId: file, replies: [{}] });
   };
-  await expect(writeLedgerSheet(input, { fetch: send })).rejects.toThrow();
+  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).rejects.toThrow();
   expect(writes).toBe(0);
 });
 it("다른 주문의 우리 열이 수정되면 덮어쓰거나 복원하지 않고 멈춘다", async () => {
@@ -87,8 +101,7 @@ it("다른 주문의 우리 열이 수정되면 덮어쓰거나 복원하지 않
   const send = async (raw: string | URL | Request, init?: RequestInit) => {
     if (init?.method === "GET") {
       reads++;
-      if (decodeURIComponent(String(raw)).includes("!N2:N2"))
-        return Response.json({ values: [[orderId.replaceAll("-", "")]] });
+      if (decodeURIComponent(String(raw)).includes("!A2:N2")) return Response.json({ values: [rows[0]] });
       return Response.json({ values: [["header"], ...rows] });
     }
     writes++;
@@ -101,7 +114,7 @@ it("다른 주문의 우리 열이 수정되면 덮어쓰거나 복원하지 않
     rows[1][1] = "사장님 수정";
     return Response.json({ spreadsheetId: file, replies: [{}] });
   };
-  await expect(writeLedgerSheet(input, { fetch: send })).rejects.toThrow();
+  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).rejects.toThrow();
   expect(writes).toBe(1);
   expect(rows[1]?.[1]).toBe("사장님 수정");
   expect(reads).toBe(3);
@@ -112,14 +125,12 @@ it("쓰기 직전 주문 ID가 다르면 쓰지 않고 멈춘다", async () => {
   const send = async (raw: string | URL | Request, init?: RequestInit) => {
     if (init?.method === "GET")
       return Response.json({
-        values: decodeURIComponent(String(raw)).includes("!N2:N2")
-          ? [[otherId.replaceAll("-", "")]]
-          : [["header"], row],
+        values: decodeURIComponent(String(raw)).includes("!A2:N2") ? [prior("XYZ789", otherId)] : [["header"], row],
       });
     writes++;
     return Response.json({ spreadsheetId: file, replies: [{}] });
   };
-  await expect(writeLedgerSheet(input, { fetch: send })).rejects.toThrow();
+  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).rejects.toThrow();
   expect(writes).toBe(0);
 });
 it("무관한 중복과 주문 식별자가 없는 부분 행은 대상 주문의 갱신을 막지 않는다", async () => {
@@ -130,9 +141,7 @@ it("무관한 중복과 주문 식별자가 없는 부분 행은 대상 주문�
   const send = async (raw: string | URL | Request, init?: RequestInit) => {
     if (init?.method === "GET")
       return Response.json({
-        values: decodeURIComponent(String(raw)).includes("!N2:N2")
-          ? [[orderId.replaceAll("-", "")]]
-          : [["header"], ...rows],
+        values: decodeURIComponent(String(raw)).includes("!A2:N2") ? [rows[0]] : [["header"], ...rows],
       });
     writes++;
     const cells = JSON.parse(String(init?.body)).requests[0].updateCells.rows[0].values;
@@ -142,7 +151,7 @@ it("무관한 중복과 주문 식별자가 없는 부분 행은 대상 주문�
     );
     return Response.json({ spreadsheetId: file, replies: [{}] });
   };
-  await expect(writeLedgerSheet(input, { fetch: send })).resolves.toBeUndefined();
+  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).resolves.toBeUndefined();
   expect(writes).toBe(1);
 });
 it("쓰기 뒤 행을 정렬해도 주문 ID와 내용이 유지되면 성공한다", async () => {
@@ -150,9 +159,7 @@ it("쓰기 뒤 행을 정렬해도 주문 ID와 내용이 유지되면 성공한
   const send = async (raw: string | URL | Request, init?: RequestInit) => {
     if (init?.method === "GET")
       return Response.json({
-        values: decodeURIComponent(String(raw)).includes("!N2:N2")
-          ? [[orderId.replaceAll("-", "")]]
-          : [["header"], ...rows],
+        values: decodeURIComponent(String(raw)).includes("!A2:N2") ? [rows[0]] : [["header"], ...rows],
       });
     const cells = JSON.parse(String(init?.body)).requests[0].updateCells.rows[0].values;
     rows[0] = cells.map(
@@ -162,5 +169,150 @@ it("쓰기 뒤 행을 정렬해도 주문 ID와 내용이 유지되면 성공한
     rows.reverse();
     return Response.json({ spreadsheetId: file, replies: [{}] });
   };
-  await expect(writeLedgerSheet(input, { fetch: send })).resolves.toBeUndefined();
+  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).resolves.toBeUndefined();
+});
+it("사장님 열에 5,000번째 행 자료가 있으면 새 행 추가를 중단한다", async () => {
+  let writes = 0;
+  const ownerRows = Array.from({ length: 5000 }, (_, i) => (i === 4999 ? ["", "", "사장님 자료"] : []));
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      writes++;
+      return Response.json({ spreadsheetId: file, replies: [{}] });
+    }
+    const path = decodeURIComponent(String(raw));
+    return Response.json({ values: path.includes("!A:T") ? ownerRows : [["header"]] });
+  };
+  await expect(
+    writeLedgerSheet({ ...(await withDigest()), setup: { ...input.setup, sheetColumnCount: 20 } }, { fetch: send }),
+  ).rejects.toThrow();
+  expect(writes).toBe(0);
+});
+it("복구가 5,000행을 넘으면 복구 쓰기를 시작하지 않고 알린다", async () => {
+  let rows: (string | number)[][] = [prior("ABC123", orderId), prior("XYZ789", otherId)],
+    writes = 0;
+  const ownerRows = Array.from({ length: 5000 }, (_, i) => (i === 4999 ? ["", "", "사장님 자료"] : []));
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "GET") {
+      const path = decodeURIComponent(String(raw));
+      if (path.includes("!A:T")) return Response.json({ values: ownerRows });
+      if (path.includes("!A2:N2")) return Response.json({ values: [rows[0]] });
+      return Response.json({ values: [["header"], ...rows] });
+    }
+    writes++;
+    const cells = JSON.parse(String(init?.body)).requests[0].updateCells.rows[0].values;
+    rows = [
+      cells.map(
+        (v: { userEnteredValue: { stringValue?: string; numberValue?: number } }) =>
+          v.userEnteredValue.stringValue ?? v.userEnteredValue.numberValue ?? "",
+      ),
+      rows[0] ?? [],
+    ];
+    return Response.json({ spreadsheetId: file, replies: [{}] });
+  };
+  await expect(
+    writeLedgerSheet({ ...(await withDigest()), setup: { ...input.setup, sheetColumnCount: 20 } }, { fetch: send }),
+  ).rejects.toThrow();
+  expect(writes).toBe(1);
+});
+it("대상 주문의 사장님 수정은 주문 ID가 같아도 덮어쓰지 않는다", async () => {
+  const original = prior("ABC123", orderId),
+    changed = [...original];
+  changed[1] = "사장님이 수정";
+  const { ledgerRowDigest } = await import("../src/ledger-sheet-write");
+  const key = new Secret("synthetic-hash-key"),
+    expectedDigest = await ledgerRowDigest(key, original);
+  let writes = 0;
+  const send = async (_raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "GET") return Response.json({ values: [["header"], changed] });
+    writes++;
+    return Response.json({ spreadsheetId: file, replies: [{}] });
+  };
+  await expect(writeLedgerSheet({ ...input, hashKey: key, expectedDigest }, { fetch: send })).rejects.toThrow();
+  expect(writes).toBe(0);
+});
+it("밀려 덮인 행의 수식은 계산값이나 일반 문자열로 바꾸지 않고 복구한다", async () => {
+  const target = prior("ABC123", orderId),
+    other = prior("XYZ789", otherId);
+  other[5] = "=SUM(1,2)";
+  let rows = [target, other],
+    writes = 0;
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    const url = decodeURIComponent(String(raw));
+    if (init?.method === "GET") {
+      if (url.includes("fields=sheets")) {
+        const typedRows = [
+          {},
+          ...rows.map((row) => ({
+            values: row.map((v) => ({
+              userEnteredValue: v === "=SUM(1,2)" ? { formulaValue: v } : { stringValue: v },
+            })),
+          })),
+        ];
+        return Response.json({ sheets: [{ data: [{ rowData: typedRows }] }] });
+      }
+      if (url.includes("!A2:N2")) return Response.json({ values: [rows[0]] });
+      return Response.json({ values: [["header"], ...rows] });
+    }
+    writes++;
+    const request = JSON.parse(String(init?.body)).requests[0];
+    if (request.updateCells) {
+      const replaced = request.updateCells.rows[0].values.map(
+        (cell: { userEnteredValue: { stringValue?: string; numberValue?: number } }) =>
+          cell.userEnteredValue.stringValue ?? cell.userEnteredValue.numberValue ?? "",
+      );
+      rows = [replaced, target];
+    } else {
+      const restored = request.appendCells.rows[0].values;
+      expect(restored[5].userEnteredValue).toEqual({ formulaValue: "=SUM(1,2)" });
+      rows.push(
+        restored.map(
+          (cell: { userEnteredValue: { stringValue?: string; numberValue?: number; formulaValue?: string } }) =>
+            cell.userEnteredValue.stringValue ??
+            cell.userEnteredValue.numberValue ??
+            cell.userEnteredValue.formulaValue ??
+            "",
+        ),
+      );
+    }
+    return Response.json({ spreadsheetId: file, replies: [{}] });
+  };
+  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).rejects.toThrow();
+  expect(writes).toBe(2);
+});
+it("스냅숏 뒤 같은 주문 행이 수정되면 쓰기 직전 다시 확인해 멈춘다", async () => {
+  const original = prior("ABC123", orderId),
+    edited = [...original];
+  edited[1] = "사장님 수정";
+  let writes = 0;
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      writes++;
+      return Response.json({ spreadsheetId: file, replies: [{}] });
+    }
+    return Response.json({
+      values: decodeURIComponent(String(raw)).includes("!A2:N2") ? [edited] : [["header"], original],
+    });
+  };
+  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).rejects.toThrow();
+  expect(writes).toBe(0);
+});
+it("쓰는 사이 다른 주문이 새로 생기면 행 집합 변경으로 알린다", async () => {
+  const rows = [prior("ABC123", orderId)];
+  let writes = 0;
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "GET")
+      return Response.json({
+        values: decodeURIComponent(String(raw)).includes("!A2:N2") ? [rows[0]] : [["header"], ...rows],
+      });
+    writes++;
+    const cells = JSON.parse(String(init?.body)).requests[0].updateCells.rows[0].values;
+    rows[0] = cells.map(
+      (v: { userEnteredValue: { stringValue?: string; numberValue?: number } }) =>
+        v.userEnteredValue.stringValue ?? v.userEnteredValue.numberValue ?? "",
+    );
+    rows.push(prior("XYZ789", otherId));
+    return Response.json({ spreadsheetId: file, replies: [{}] });
+  };
+  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).rejects.toThrow();
+  expect(writes).toBe(1);
 });

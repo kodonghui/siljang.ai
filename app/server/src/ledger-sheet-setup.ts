@@ -18,6 +18,7 @@ export interface LedgerSheetSetup {
   readonly sheetId: number;
   readonly start: number;
   readonly end: number;
+  readonly sheetColumnCount: number;
   readonly movedRight: boolean;
   readonly ownershipToken: string;
   readonly columns: readonly { readonly header: string; readonly column: string }[];
@@ -28,11 +29,17 @@ export function ledgerSheetSetup(
 ) {
   const send = options.fetch ?? fetch,
     sheets = googleLedgerSheets(options);
-  function result(sheetId: number, plan: LedgerColumnPlan, ownershipToken: string): LedgerSheetSetup {
+  function result(
+    sheetId: number,
+    plan: LedgerColumnPlan,
+    ownershipToken: string,
+    sheetColumnCount: number,
+  ): LedgerSheetSetup {
     return {
       sheetId,
       start: plan.start,
       end: plan.end,
+      sheetColumnCount,
       movedRight: plan.movedRight,
       columns: plan.columns,
       ownershipToken,
@@ -50,7 +57,7 @@ export function ledgerSheetSetup(
       if (verified === null) continue;
       if (!LEDGER_STORAGE_HEADERS.every((header, index) => snapshot.headers[marker.start + index] === header)) continue;
       const plan = planLedgerColumns(snapshot.columnCount, snapshot.headers, verified);
-      if (!plan.needsWrite) return result(snapshot.sheetId, plan, marker.token);
+      if (!plan.needsWrite) return result(snapshot.sheetId, plan, marker.token, snapshot.columnCount);
     }
     return null;
   }

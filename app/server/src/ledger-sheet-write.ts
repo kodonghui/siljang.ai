@@ -1,4 +1,5 @@
 import { readBytesLimited } from "./body";
+import { toBase64Url } from "./encoding";
 import { GoogleLedgerUnavailableError } from "./ledger-google-auth";
 import { LEDGER_HEADERS, LEDGER_STORAGE_HEADERS, ledgerColumnName } from "./ledger-sheet-columns";
 import type { LedgerSheetSetup } from "./ledger-sheet-setup";
@@ -16,6 +17,22 @@ export class LedgerConflictError extends Error {
 }
 class LedgerDefiniteError extends Error {}
 
+type LedgerCell = string | number | boolean | { readonly formula: string };
+export async function ledgerRowDigest(key: Secret, row: readonly LedgerCell[]): Promise<string> {
+  const k = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(key.reveal()),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return toBase64Url(
+    new Uint8Array(
+      await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(JSON.stringify(["ledger-row-v1", row]))),
+    ),
+  );
+}
+
 /** 중복을 탐지할 뿐 시트의 행을 삭제하거나 수정하지 않는다. */
 export async function auditLedgerSheet(
   input: Parameters<typeof writeLedgerSheet>[0],
@@ -25,6 +42,8 @@ export async function auditLedgerSheet(
     !/^[A-Za-z0-9_-]{20,100}$/.test(input.file) ||
     !/^[0-9A-Z]{6,8}$/.test(String(input.values[0])) ||
     input.setup.end !== input.setup.start + LEDGER_STORAGE_HEADERS.length ||
+    !Number.isInteger(input.setup.sheetColumnCount) ||
+    input.setup.sheetColumnCount < input.setup.end ||
     !isUuid(input.eventId)
   )
     throw new TypeError("invalid ledger audit");
@@ -83,6 +102,8 @@ export async function writeLedgerSheet(
     readonly eventId: string;
     readonly orderId: string;
     readonly uncertain?: boolean;
+    readonly hashKey: Secret;
+    readonly expectedDigest?: string | null;
   },
   options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {},
 ): Promise<void> {
@@ -91,6 +112,8 @@ export async function writeLedgerSheet(
     !/^[0-9A-Z]{6,8}$/.test(String(input.values[0])) ||
     input.values.length !== LEDGER_HEADERS.length ||
     input.setup.end !== input.setup.start + LEDGER_STORAGE_HEADERS.length ||
+    !Number.isInteger(input.setup.sheetColumnCount) ||
+    input.setup.sheetColumnCount < input.setup.end ||
     !isUuid(input.shopId) ||
     !isUuid(input.linkId) ||
     !isUuid(input.eventId) ||
@@ -136,10 +159,10 @@ export async function writeLedgerSheet(
   const eventId = input.eventId.replaceAll("-", "").toLowerCase();
   const orderId = input.orderId.replaceAll("-", "").toLowerCase();
   const last = ledgerColumnName(input.setup.end - 1);
-  type Cell = string | number | boolean;
+  type Cell = LedgerCell;
   async function read(range: string): Promise<Cell[][]> {
     const url = new URL(`${base}/values/${encodeURIComponent(`${tab}!${range}`)}`);
-    url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
+    url.searchParams.set("valueRenderOption", "FORMULA");
     const data = await request(url.href, "GET");
     const rows = data?.values ?? [];
     if (
@@ -152,12 +175,45 @@ export async function writeLedgerSheet(
       )
     )
       throw new GoogleLedgerUnavailableError();
-    return rows as Cell[][];
+    const parsed = rows as Cell[][];
+    // FORMULA는 수식과 '='로 시작하는 일반 문자열을 구분하지 못한다.
+    // 해당 셀이 있을 때만 userEnteredValue를 읽어 수식과 문자를 보존한다.
+    if (parsed.some((row) => row.some((cell) => typeof cell === "string" && cell.startsWith("=")))) {
+      const gridUrl = new URL(base);
+      gridUrl.searchParams.set("ranges", `${tab}!${range}`);
+      gridUrl.searchParams.set("fields", "sheets(data(rowData(values(userEnteredValue))))");
+      const grid = await request(gridUrl.href, "GET");
+      const sheets = grid?.sheets;
+      if (!Array.isArray(sheets) || sheets.length !== 1) throw new GoogleLedgerUnavailableError();
+      const data = sheets[0]?.data;
+      const rowData = Array.isArray(data) && data.length === 1 ? data[0]?.rowData : undefined;
+      if (!Array.isArray(rowData)) throw new GoogleLedgerUnavailableError();
+      for (let r = 0; r < parsed.length; r++)
+        for (let c = 0; c < (parsed[r]?.length ?? 0); c++) {
+          const value = parsed[r]?.[c];
+          if (typeof value !== "string" || !value.startsWith("=")) continue;
+          const entered = rowData[r]?.values?.[c]?.userEnteredValue;
+          const parsedRow = parsed[r];
+          if (!parsedRow) throw new GoogleLedgerUnavailableError();
+          if (entered?.formulaValue === value) parsedRow[c] = { formula: value };
+          else if (entered?.stringValue !== value) throw new GoogleLedgerUnavailableError();
+        }
+    }
+    return parsed;
   }
   async function snapshot(): Promise<Cell[][]> {
     const rows = await read(`${first}:${last}`);
     if (rows.length > 5001) throw new LedgerConflictError("ledger row limit");
     return rows.slice(1).map((row) => Array.from({ length: LEDGER_STORAGE_HEADERS.length }, (_, i) => row[i] ?? ""));
+  }
+  async function ensureAppendFits(count: number): Promise<void> {
+    const lastColumn = ledgerColumnName(input.setup.sheetColumnCount - 1);
+    const url = new URL(`${base}/values/${encodeURIComponent(`${tab}!A:${lastColumn}`)}`);
+    url.searchParams.set("valueRenderOption", "FORMULA");
+    const data = await request(url.href, "GET");
+    const rows = data?.values ?? [];
+    if (!Array.isArray(rows)) throw new GoogleLedgerUnavailableError();
+    if (rows.length + count > 5000) throw new LedgerConflictError("ledger row limit");
   }
   function key(row: Cell[]): string | null {
     return typeof row[13] === "string" && row[13] ? `id:${row[13]}` : row[0] ? `number:${String(row[0])}` : null;
@@ -177,11 +233,13 @@ export async function writeLedgerSheet(
   function cells(values: readonly Cell[]) {
     return values.map((value) => ({
       userEnteredValue:
-        typeof value === "number"
-          ? { numberValue: value }
-          : typeof value === "boolean"
-            ? { boolValue: value }
-            : { stringValue: value },
+        typeof value === "object"
+          ? { formulaValue: value.formula }
+          : typeof value === "number"
+            ? { numberValue: value }
+            : typeof value === "boolean"
+              ? { boolValue: value }
+              : { stringValue: value },
     }));
   }
   function sameRows(left: Cell[][] | undefined, right: Cell[][]): boolean {
@@ -208,14 +266,22 @@ export async function writeLedgerSheet(
     const idMatches = before.flatMap((row, index) => (row[13] === orderId ? [index] : []));
     if (matches.length > 1 || idMatches.length > 1) throw new LedgerDuplicateError();
     const target = matches[0];
-    if (input.uncertain && before.some((row) => row[12] === eventId && row[13] === orderId)) return;
-    if (target !== undefined) {
-      if (before[target]?.[13] !== orderId) throw new LedgerConflictError("order ID changed");
-      const idColumn = ledgerColumnName(input.setup.end - 1);
-      const check = await read(`${idColumn}${target + 2}:${idColumn}${target + 2}`);
-      if (check[0]?.[0] !== orderId) throw new LedgerConflictError("order moved");
-    } else if (prior.has(`id:${orderId}`)) throw new LedgerConflictError("order number changed");
     const values = [...input.values, eventId, orderId];
+    if (input.uncertain && before.some((row) => row[12] === eventId && row[13] === orderId)) {
+      const found = before.find((row) => row[12] === eventId && row[13] === orderId);
+      if (JSON.stringify(found) !== JSON.stringify(values)) throw new LedgerConflictError("uncertain row changed");
+      return;
+    }
+    if (target !== undefined) {
+      const old = before[target];
+      if (!old || old[13] !== orderId) throw new LedgerConflictError("order ID changed");
+      if (!input.expectedDigest || (await ledgerRowDigest(input.hashKey, old)) !== input.expectedDigest)
+        throw new LedgerConflictError("target edited");
+      const check = await read(`${first}${target + 2}:${last}${target + 2}`);
+      const checked = Array.from({ length: LEDGER_STORAGE_HEADERS.length }, (_, i) => check[0]?.[i] ?? "");
+      if (JSON.stringify(checked) !== JSON.stringify(old)) throw new LedgerConflictError("order moved or edited");
+    } else if (prior.has(`id:${orderId}`)) throw new LedgerConflictError("order number changed");
+    if (target === undefined) await ensureAppendFits(1);
     const write =
       target === undefined
         ? {
@@ -254,6 +320,7 @@ export async function writeLedgerSheet(
       }
       if (remaining.length) changed = true;
     }
+    for (const id of observed.keys()) if (!prior.has(id)) changed = true;
     const targetRows = after.filter((row) => row[13] === orderId);
     if (
       missing.length ||
@@ -262,11 +329,9 @@ export async function writeLedgerSheet(
       after.filter((row) => row[0] === input.values[0]).length !== 1 ||
       JSON.stringify(targetRows[0]) !== JSON.stringify(values)
     ) {
-      if (
-        missing.length &&
-        missing.every((row) => row.every((cell) => typeof cell !== "string" || !cell.startsWith("=")))
-      ) {
+      if (missing.length) {
         try {
+          await ensureAppendFits(missing.length);
           await sendWrite({
             appendCells: {
               sheetId: input.setup.sheetId,

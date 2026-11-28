@@ -142,7 +142,12 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
       lease,
       "written",
       new Date(),
-      JSON.stringify({ columns: [{ header: "주문번호", column: "AA" }], movedRight: true, ownershipToken: "proof" }),
+      JSON.stringify({
+        columns: [{ header: "주문번호", column: "AA" }],
+        movedRight: true,
+        ownershipToken: "proof",
+        sheetHash: "A".repeat(43),
+      }),
     ]);
     expect(
       (await isolated.db.query<{ status: string }>("SELECT status FROM ledger_writes WHERE id=$1", [first])).rows[0]
@@ -157,7 +162,9 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
       ).rows[0]?.our_columns.movedRight,
     ).toBe(true);
     await isolated.db.query("UPDATE ledger_writes SET next_attempt_at=now()-interval '1 second' WHERE id=$1", [second]);
-    expect((await claim(second)).rowCount).toBe(1);
+    const secondClaim = await claim(second);
+    expect(secondClaim.rowCount).toBe(1);
+    expect((secondClaim.rows[0] as { expected_hash: string }).expected_hash).toBe("A".repeat(43));
     await isolated.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,$4,$5,NULL)", [
       shop.shopId,
       second,
@@ -661,8 +668,8 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
             return Response.json({
               values: resolved ? [["주문번호"], [orderNo]] : [["주문번호"], [orderNo], [orderNo]],
             });
-          if (decodeURIComponent(url.pathname).includes("!N2:N2"))
-            return Response.json({ values: [[sheetRow?.[13] ?? ""]] });
+          if (decodeURIComponent(url.pathname).includes("!A2:N2"))
+            return Response.json({ values: sheetRow ? [sheetRow] : [] });
           if (decodeURIComponent(url.pathname).includes("!A:N"))
             return Response.json({ values: [["주문번호"], ...(sheetRow ? [sheetRow] : [])] });
           return Response.json({ values: [["주문번호"]] });
@@ -701,7 +708,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         log: () => {},
       });
       expect(result.jobs.ledger_write?.done).toBe(1);
-      expect(calls).toBe(7);
+      expect(calls).toBe(8);
       expect(written).not.toBeNull();
       expect(
         (await isolated.db.query<{ status: string }>("SELECT status FROM ledger_writes WHERE id=$1", [write])).rows[0]
@@ -727,7 +734,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         log: () => {},
       });
       expect(resultAudit.jobs.ledger_write?.done).toBe(1);
-      expect(calls).toBe(13);
+      expect(calls).toBe(14);
       expect(writes).toBe(1);
       expect(
         (

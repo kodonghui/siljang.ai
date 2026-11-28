@@ -6,6 +6,7 @@ export interface LedgerWriteSnapshot {
   readonly shopId: string;
   readonly eventId: string;
   readonly orderId: string;
+  readonly expectedDigest?: string | null;
   readonly uncertain: boolean;
   readonly auditing: boolean;
   readonly linkId: string;
@@ -20,6 +21,7 @@ type Result =
         readonly columns: readonly { readonly header: string; readonly column: string }[];
         readonly movedRight: boolean;
         readonly ownershipToken: string;
+        readonly sheetHash?: string;
       };
     }
   | {

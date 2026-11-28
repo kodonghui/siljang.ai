@@ -4,7 +4,7 @@ import { guardedLedgerFetch } from "../src/ledger-guarded-fetch";
 it("연결이 끊기면 진행 중 요청을 취소하고 다음 요청을 시작하지 않는다", async () => {
   const connection = new AbortController(),
     send = vi.fn(
-      async (_input: RequestInfo | URL, init?: RequestInit) =>
+      async (_input: Request | string | URL, init?: RequestInit) =>
         await new Promise<Response>((_resolve, reject) => {
           init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
         }),
