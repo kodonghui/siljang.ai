@@ -319,15 +319,18 @@ export async function writeLedgerSheet(
       const expected = input.expectedDigests ? input.expectedDigests[String(old[12])] : input.expectedDigest;
       if (!expected || (await ledgerRowDigest(input.hashKey, old)) !== expected)
         throw new LedgerConflictError("target edited");
-      const check = await read(`${first}${target + 2}:${last}${target + 2}`);
-      const checked = Array.from({ length: LEDGER_STORAGE_HEADERS.length }, (_, i) => check[0]?.[i] ?? "");
-      if (JSON.stringify(checked) !== JSON.stringify(old)) throw new LedgerConflictError("order moved or edited");
     } else if (prior.has(`id:${orderId}`)) throw new LedgerConflictError("order number changed");
-    if (target === undefined) await ensureAppendFits(1);
     const checkpoint = input.saveCheckpoint
       ? await buildLedgerCheckpoint(input.hashKey, context, before, values)
       : null;
     if (checkpoint && input.saveCheckpoint) await input.saveCheckpoint(checkpoint);
+    if (target === undefined) await ensureAppendFits(1);
+    else {
+      const check = await read(`${first}${target + 2}:${last}${target + 2}`);
+      const checked = Array.from({ length: LEDGER_STORAGE_HEADERS.length }, (_, i) => check[0]?.[i] ?? "");
+      if (JSON.stringify(checked) !== JSON.stringify(current[target]))
+        throw new LedgerConflictError("order moved or edited");
+    }
     const write =
       target === undefined
         ? {

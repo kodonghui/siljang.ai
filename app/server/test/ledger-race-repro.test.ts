@@ -550,3 +550,31 @@ it("다른 파일에 묶인 불확실 비교 기준은 재전송하지 않고 �
     name: "LedgerConflictError",
   });
 });
+it("비교 기준을 저장하는 동안 대상 행이 바뀌면 쓰기 직전에 다시 확인해 멈춘다", async () => {
+  const original = prior("ABC123", orderId),
+    edited = [...original];
+  edited[1] = "사장님이 저장 중 수정";
+  let current = original,
+    writes = 0;
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      writes++;
+      return Response.json({ spreadsheetId: file, replies: [{}] });
+    }
+    return Response.json({
+      values: decodeURIComponent(String(raw)).includes("!A2:N2") ? [current] : [["header"], current],
+    });
+  };
+  await expect(
+    writeLedgerSheet(
+      {
+        ...(await withDigest()),
+        saveCheckpoint: async () => {
+          current = edited;
+        },
+      },
+      { fetch: send },
+    ),
+  ).rejects.toThrow();
+  expect(writes).toBe(0);
+});
