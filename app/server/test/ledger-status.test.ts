@@ -27,7 +27,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     logs: string[] = [];
   beforeAll(async () => {
     isolated = await isolatedTestDb();
-    await isolated.db.query("CREATE SCHEMA vault; CREATE TABLE vault.secrets (id uuid PRIMARY KEY)");
+    await isolated.db.query("CREATE SCHEMA vault; CREATE TABLE vault.secrets (id uuid PRIMARY KEY, secret text); CREATE FUNCTION vault.create_secret(value text) RETURNS uuid LANGUAGE sql AS $$ INSERT INTO vault.secrets (id, secret) VALUES (gen_random_uuid(), value) RETURNING id $$");
     await isolated.db.query(`CREATE ROLE "${role}" NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
     await isolated.db.query(
       readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8").replaceAll(
@@ -139,14 +139,37 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
       });
     },
   );
+  it("Vault 저장 함수는 해당 가게의 암호문만 저장한다", async () => {
+    const id = await link("linked");
+    const encrypted = `v1:${"A".repeat(64)}`;
+    const result = await isolated.db.query<{ ok: boolean }>(
+      "SELECT private.store_ledger_credential($1,$2,$3,$4) AS ok", [shop.shopId, shop.ownerId, id, encrypted],
+    );
+    expect(result.rows[0]?.ok).toBe(true);
+    const found = await isolated.db.query<{ secret: string }>("SELECT secret FROM vault.secrets WHERE secret IS NOT NULL");
+    expect(found.rows).toEqual([{ secret: encrypted }]);
+    await expect(isolated.db.query("SELECT private.store_ledger_credential($1,$2,$3,$4)", [shop.shopId, shop.ownerId, id, "plaintext-token"])).rejects.toThrow();
+  });
   it("연결 해제는 토큰을 지우고 상태를 반환한다", async () => {
-    await link("linked");
-    const response = await app(true).request(PATH, { method: "DELETE", headers: { cookie, "Idempotency-Key": `ledger-${newUuid()}` } }, testEnv());
+    const linkId = await link("linked");
+    const ref = (
+      await isolated.db.query<{ credential_ref: string }>("SELECT credential_ref FROM ledger_links WHERE id=$1", [
+        linkId,
+      ])
+    ).rows[0]?.credential_ref;
+    const response = await app(true).request(
+      PATH,
+      {
+        method: "DELETE",
+        headers: { cookie, Origin: "https://siljang.example", "Idempotency-Key": `ledger-${newUuid()}` },
+      },
+      testEnv(),
+    );
     expect(response.status, await response.clone().text()).toBe(200);
-    const body = await response.json() as { outcome: string; ledger: {status: string} };
+    const body = (await response.json()) as { outcome: string; ledger: { status: string } };
     expect(body.outcome).toBe("done");
     expect(body.ledger.status).toBe("unlinked");
-    expect((await isolated.db.query("SELECT id FROM vault.secrets")).rowCount).toBe(0);
+    expect((await isolated.db.query("SELECT id FROM vault.secrets WHERE id::text=$1", [ref])).rowCount).toBe(0);
   });
   it("복구 뒤 토큰이 없으면 다시 연결할 수 있도록 auth_lost를 반환한다", async () => {
     await link("linked", { missing: true });
