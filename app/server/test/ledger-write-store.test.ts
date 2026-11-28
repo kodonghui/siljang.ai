@@ -1,6 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { DUE_SOURCES } from "../src/due-sources";
+import { runDueJobs } from "../src/job-runner";
+import { LEDGER_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
+import { ledgerWriteJob } from "../src/ledger-write-job";
+import { createServices } from "../src/services";
+import { readSettings, Secret } from "../src/settings";
 import { TEST_DATABASE_URL, testDb } from "./support/db";
+import { newFieldKey, testFieldCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createTestRole, roleConnection } from "./support/purge-role";
 import { createShop } from "./support/shops";
@@ -240,5 +246,115 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
     if (!result) throw new Error("ledger write missing");
     expect(result?.status).toBe("retrying");
     expect(result.next_attempt_at.getTime()).toBe(result.first_failed_at.getTime() + 24 * 3600000);
+  });
+  it("제한 역할 예약 실행에서 Vault 암호문을 열고 구글 모의 시트에 현재 행을 쓴다", async () => {
+    const shop = await createShop(isolated.db, "합성 실행기"),
+      link = crypto.randomUUID(),
+      row = crypto.randomUUID(),
+      write = crypto.randomUUID(),
+      ref = crypto.randomUUID();
+    const file = "synthetic_sheet_1234567890",
+      tab = "장부",
+      secretText = `test-${crypto.randomUUID()}-${crypto.randomUUID()}`;
+    const settings = readSettings({
+      APP_ENV: "development",
+      REQUEST_HASH_KEY: secretText,
+      GOOGLE_CLIENT_ID: "test-client",
+      GOOGLE_CLIENT_SECRET: "test-secret",
+      GOOGLE_LEDGER_REDIRECT_URIS: "https://test.example/callback",
+    });
+    const fields = testFieldCrypto(new Map([[1, newFieldKey()]]), 1),
+      token = await fields.seal("fake-refresh", {
+        purpose: "ledger_links.oauth_token",
+        shopId: shop.shopId,
+        recordId: link,
+      });
+    await isolated.db.query("INSERT INTO vault.secrets(id,name,secret) VALUES($1,$2,$3)", [
+      ref,
+      `siljang-ledger:${shop.shopId}:${link}`,
+      token,
+    ]);
+    await isolated.db.query(
+      "INSERT INTO ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref) VALUES($1,$2,$3,$4,'{}',$5)",
+      [link, shop.shopId, file, tab, ref],
+    );
+    await isolated.db.query("INSERT INTO ledger_rows(id,shop_id,order_id) VALUES($1,$2,$3)", [
+      row,
+      shop.shopId,
+      shop.orderId,
+    ]);
+    await isolated.db.query(
+      "INSERT INTO ledger_writes(id,shop_id,ledger_row_id,event_key,event_kind,next_attempt_at) VALUES($1,$2,$3,$4,'changed',now()-interval '1 second')",
+      [write, shop.shopId, row, `ledger:${write}:changed`],
+    );
+    const proof = await signLedgerColumns(
+      new Secret(secretText),
+      { shopId: shop.shopId, spreadsheetId: file, sheetId: 7 },
+      0,
+      false,
+    );
+    let written: unknown = null;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (raw: string | URL | Request, init?: RequestInit) => {
+        const url = new URL(String(raw));
+        if (url.hostname === "oauth2.googleapis.com")
+          return Response.json({ access_token: "fake-access", token_type: "Bearer", expires_in: 3600 });
+        if (url.hostname === "www.googleapis.com")
+          return Response.json({
+            id: file,
+            mimeType: "application/vnd.google-apps.spreadsheet",
+            capabilities: { canEdit: true },
+          });
+        if (init?.method === "POST") {
+          written = JSON.parse(String(init.body));
+          return Response.json({ updates: { updatedRows: 1 } });
+        }
+        if (url.pathname.includes("/values/"))
+          return Response.json({ values: url.pathname.includes("1%3A1") ? [LEDGER_HEADERS] : [["주문번호"]] });
+        return Response.json({
+          sheets: [
+            {
+              properties: { sheetId: 7, title: tab, sheetType: "GRID", gridProperties: { columnCount: 12 } },
+              developerMetadata: [
+                {
+                  metadataKey: "siljang_columns_v1",
+                  metadataValue: proof,
+                  visibility: "PROJECT",
+                  location: { dimensionRange: { sheetId: 7, dimension: "COLUMNS", startIndex: 0, endIndex: 1 } },
+                },
+              ],
+            },
+          ],
+        });
+      }),
+    );
+    const db = roleConnection(isolated.connect(), role);
+    try {
+      const services = createServices({}, settings, { fieldCrypto: fields });
+      const result = await runDueJobs({
+        db,
+        now: new Date(),
+        jobs: [
+          {
+            name: "ledger_write",
+            every: "minute",
+            sources: ["ledger_write"],
+            handler: ledgerWriteJob(settings, services),
+          },
+        ],
+        log: () => {},
+      });
+      expect(result.jobs.ledger_write?.done).toBe(1);
+      expect(written).not.toBeNull();
+      expect(
+        (await isolated.db.query<{ status: string }>("SELECT status FROM ledger_writes WHERE id=$1", [write])).rows[0]
+          ?.status,
+      ).toBe("written");
+      expect(JSON.stringify(written)).not.toContain("fake-refresh");
+    } finally {
+      await db.close();
+      vi.unstubAllGlobals();
+    }
   });
 });
