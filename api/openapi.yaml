@@ -24848,6 +24848,8 @@ paths:
           접근:
           - security
           - 401:unauthenticated
+          입력:
+          - 422:validation_failed
           대상:
           - 404:not_found
           반복:

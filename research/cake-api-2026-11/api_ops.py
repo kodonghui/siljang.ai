@@ -759,7 +759,7 @@ op(id="API-084", method="post", path="/owner/tasks/{taskId}/ledger-confirmation"
    ok=[(200, "LedgerConfirmationResult", {"confirmed": {"outcome": "confirmed"}})],
    errors={404: ["not_found"], 409: ["version_conflict"], 503: ["google_unavailable"]},
    omit={"403": O403},
-   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "반복": ["idem"],
+   kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"], "반복": ["idem"],
           "동시": ["409:version_conflict"], "외부": ["503:google_unavailable"], "노출": ["closed"], "화면": ["screen"]})
 
 # ═══ 예약 링크 ════════════════════════════════════════════════════════════════
