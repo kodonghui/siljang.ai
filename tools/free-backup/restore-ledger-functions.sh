@@ -33,6 +33,13 @@ BEGIN
   END IF;
 END
 $guard$;
+CREATE TEMP TABLE ledger_restore_function_baseline ON COMMIT DROP AS
+SELECT p.oid AS function_id, pg_catalog.pg_get_functiondef(p.oid) AS definition
+FROM pg_catalog.pg_proc p
+WHERE p.oid IN (
+  pg_catalog.to_regprocedure('public.read_owner_ledger(uuid,uuid,uuid)'),
+  pg_catalog.to_regprocedure('public.unlink_owner_ledger(uuid,uuid,timestamptz)')
+);
 SQL
   for file in 0051_ledger_vault_status.sql 0052_ledger_unlink_vault.sql 0053_ledger_vault_store.sql 0054_ledger_create.sql 0055_ledger_lock.sql; do
     cat "$root/db/migrations/$file"
@@ -40,4 +47,16 @@ SQL
   done
   # 복구 대상의 기본 역할 권한도 원래 0049 원칙으로 닫는다.
   cat "$root/db/migrations/0049_revoke_supabase_definer_execute.sql"
+  cat <<'SQL'
+DO $compare$
+BEGIN
+  IF (SELECT count(*) FROM pg_temp.ledger_restore_function_baseline) <> 2 OR EXISTS (
+    SELECT 1 FROM pg_temp.ledger_restore_function_baseline b
+    WHERE b.definition IS DISTINCT FROM pg_catalog.pg_get_functiondef(b.function_id)
+  ) THEN
+    RAISE EXCEPTION 'restored ledger function version does not match';
+  END IF;
+END
+$compare$;
+SQL
 } | psql -X -q -v ON_ERROR_STOP=1 --single-transaction
