@@ -88,13 +88,40 @@ function Value({ value }: { readonly value: unknown }) {
             <div key={key}>
               <dt>{labels[key] ?? key}</dt>
               <dd>
-                <Value value={item} />
+                {key === "textMasked" && typeof item === "string" ? <LongText value={item} /> : <Value value={item} />}
               </dd>
             </div>
           ))}
       </dl>
     );
   return <>{display(value)}</>;
+}
+function LongText({ value }: { readonly value: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [expanded, setExpanded] = useState(false),
+    [overflow, setOverflow] = useState(false);
+  useEffect(() => {
+    if (expanded) return;
+    const measure = () => {
+      const node = ref.current;
+      if (node) setOverflow(node.scrollHeight > node.clientHeight);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [expanded]);
+  return (
+    <div>
+      <p ref={ref} className={expanded ? "" : "operator-records-clamp"}>
+        {value}
+      </p>
+      {overflow ? (
+        <button type="button" onClick={() => setExpanded(!expanded)}>
+          {expanded ? "접기" : "더 보기"}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 const labels: Record<string, string> = {
   customerName: "주문자",

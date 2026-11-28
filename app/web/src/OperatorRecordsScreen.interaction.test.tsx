@@ -365,3 +365,37 @@ it.each(errorCases)("%s의 %s %s 응답을 화면 상태로 표시한다", async
       (await screen.findAllByText(new RegExp(ERROR_CODES[code].message.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))).length,
     ).toBeGreaterThan(0);
 });
+it("다섯 줄을 넘는 대화 글은 더 보기로 펼친다", async () => {
+  const consultation = sample("/operator/shops/{shopId}/consultations/{consultationId}", "consultation");
+  const consultations = sample("/operator/shops/{shopId}/records", "consultations");
+  const opened = sample("/operator/shops/{shopId}/originals", "consultation_text", "post");
+  opened.consultationText.items[1].textMasked = "긴 합성 상담 글 ".repeat(80);
+  vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(240);
+  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(100);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(
+        json(url.includes("/originals") ? opened : url.includes("/consultations/") ? consultation : consultations),
+      ),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/consultations/${consultation.consultationId}`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "대화 글 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 내용 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  const more = (await screen.findAllByRole("button", { name: "더 보기" }))[0];
+  expect(more).toBeTruthy();
+  if (more) fireEvent.click(more);
+  expect(screen.getByRole("button", { name: "접기" })).toBeTruthy();
+  vi.restoreAllMocks();
+});

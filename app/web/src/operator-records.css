@@ -157,3 +157,11 @@ dialog.operator-records-dialog::backdrop {
     margin-top: auto;
   }
 }
+
+.operator-records-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
