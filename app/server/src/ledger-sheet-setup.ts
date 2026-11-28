@@ -3,6 +3,7 @@ import { GoogleLedgerUnavailableError } from "./ledger-google-auth";
 import { googleLedgerSheets, type LedgerSheetSnapshot } from "./ledger-google-sheet";
 import {
   LEDGER_HEADERS,
+  LEDGER_STORAGE_HEADERS,
   type LedgerColumnPlan,
   LedgerColumnsOverflowError,
   planLedgerColumns,
@@ -45,7 +46,7 @@ export function ledgerSheetSetup(
         marker.end,
       );
       if (verified === null) continue;
-      if (!LEDGER_HEADERS.every((header, index) => snapshot.headers[marker.start + index] === header)) continue;
+      if (!LEDGER_STORAGE_HEADERS.every((header, index) => snapshot.headers[marker.start + index] === header)) continue;
       const plan = planLedgerColumns(snapshot.columnCount, snapshot.headers, verified);
       if (!plan.needsWrite) return result(snapshot.sheetId, plan, marker.token);
     }
@@ -82,8 +83,29 @@ export function ledgerSheetSetup(
               {
                 updateCells: {
                   start: { sheetId: snapshot.sheetId, rowIndex: 0, columnIndex: plan.start },
-                  rows: [{ values: LEDGER_HEADERS.map((value) => ({ userEnteredValue: { stringValue: value } })) }],
-                  fields: "userEnteredValue",
+                  rows: [
+                    {
+                      values: LEDGER_STORAGE_HEADERS.map((value, index) => ({
+                        userEnteredValue: { stringValue: value },
+                        ...(index === LEDGER_HEADERS.length
+                          ? { note: "실장님이 중복 기록을 막는 데 쓰는 열, 지우거나 바꾸지 마세요" }
+                          : {}),
+                      })),
+                    },
+                  ],
+                  fields: "userEnteredValue,note",
+                },
+              },
+              {
+                updateDimensionProperties: {
+                  range: {
+                    sheetId: snapshot.sheetId,
+                    dimension: "COLUMNS",
+                    startIndex: plan.end - 1,
+                    endIndex: plan.end,
+                  },
+                  properties: { hiddenByUser: true },
+                  fields: "hiddenByUser",
                 },
               },
               {
@@ -112,7 +134,7 @@ export function ledgerSheetSetup(
           Array.isArray(raw) ||
           (raw as Record<string, unknown>).spreadsheetId !== file ||
           !Array.isArray((raw as Record<string, unknown>).replies) ||
-          ((raw as Record<string, unknown>).replies as unknown[]).length !== 3
+          ((raw as Record<string, unknown>).replies as unknown[]).length !== 4
         )
           throw new GoogleLedgerUnavailableError();
         const checked = await sheets.inspect(access, file, tab);

@@ -1,6 +1,6 @@
 import { readBytesLimited } from "./body";
 import { GoogleLedgerUnavailableError } from "./ledger-google-auth";
-import { LEDGER_HEADERS, LEDGER_MAX_COLUMNS } from "./ledger-sheet-columns";
+import { LEDGER_MAX_COLUMNS, LEDGER_STORAGE_HEADERS } from "./ledger-sheet-columns";
 import type { Secret } from "./settings";
 
 export interface LedgerSheetSnapshot {
@@ -118,10 +118,10 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
             typeof end !== "number" ||
             !Number.isSafeInteger(end) ||
             end !== start + 1 ||
-            start + LEDGER_HEADERS.length > columnCount
+            start + LEDGER_STORAGE_HEADERS.length > columnCount
           )
             continue;
-          markers.push({ token: entry.metadataValue, start, end: start + LEDGER_HEADERS.length });
+          markers.push({ token: entry.metadataValue, start, end: start + LEDGER_STORAGE_HEADERS.length });
         }
         const headerUrl = new URL(`${base}/values/${encodeURIComponent(`'${sheetName.replaceAll("'", "''")}'!1:1`)}`);
         headerUrl.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");

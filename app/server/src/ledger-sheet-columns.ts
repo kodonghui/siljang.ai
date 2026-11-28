@@ -16,6 +16,8 @@ export const LEDGER_HEADERS = [
   "인도 일시",
   "재제작",
 ] as const;
+export const LEDGER_INTERNAL_HEADER = "실장님 기록 ID";
+export const LEDGER_STORAGE_HEADERS = [...LEDGER_HEADERS, LEDGER_INTERNAL_HEADER] as const;
 export const LEDGER_MAX_COLUMNS = 18278;
 export interface LedgerSheetScope {
   readonly shopId: string;
@@ -35,7 +37,7 @@ export class LedgerColumnsOverflowError extends Error {
   override readonly name = "LedgerColumnsOverflowError";
 }
 const genuine = new WeakSet<object>(),
-  HEADER_SET = new Set<string>(LEDGER_HEADERS);
+  HEADER_SET = new Set<string>(LEDGER_STORAGE_HEADERS);
 function validScope(scope: LedgerSheetScope): boolean {
   return (
     isUuid(scope.shopId) &&
@@ -46,7 +48,7 @@ function validScope(scope: LedgerSheetScope): boolean {
   );
 }
 function validStart(start: number): boolean {
-  return Number.isSafeInteger(start) && start >= 0 && start + LEDGER_HEADERS.length <= LEDGER_MAX_COLUMNS;
+  return Number.isSafeInteger(start) && start >= 0 && start + LEDGER_STORAGE_HEADERS.length <= LEDGER_MAX_COLUMNS;
 }
 async function signingKey(key: Secret) {
   return crypto.subtle.importKey(
@@ -66,9 +68,9 @@ function data(scope: LedgerSheetScope, start: number, movedRight: boolean) {
       scope.spreadsheetId,
       scope.sheetId,
       start,
-      start + LEDGER_HEADERS.length,
+      start + LEDGER_STORAGE_HEADERS.length,
       movedRight,
-      LEDGER_HEADERS,
+      LEDGER_STORAGE_HEADERS,
     ]),
   );
 }
@@ -103,7 +105,7 @@ export async function verifyLedgerColumns(
   start: number,
   end: number,
 ): Promise<VerifiedLedgerColumns | null> {
-  if (!validScope(scope) || !validStart(start) || end !== start + LEDGER_HEADERS.length) return null;
+  if (!validScope(scope) || !validStart(start) || end !== start + LEDGER_STORAGE_HEADERS.length) return null;
   const match = /^c1\.([a-z0-9]{1,3})\.([01])\.([A-Za-z0-9_-]{43})$/.exec(token);
   if (match === null || Number.parseInt(match[1] as string, 36) !== start || start.toString(36) !== match[1])
     return null;
@@ -139,7 +141,7 @@ export function planLedgerColumns(
   const reuse =
     verified !== null &&
     verified.end <= columnCount &&
-    LEDGER_HEADERS.every((header, i) => headers[verified.start + i] === header);
+    LEDGER_STORAGE_HEADERS.every((header, i) => headers[verified.start + i] === header);
   const start = reuse && verified !== null ? verified.start : columnCount;
   if (!validStart(start)) throw new LedgerColumnsOverflowError();
   const movedRight =
@@ -148,7 +150,7 @@ export function planLedgerColumns(
       : headers.some((value) => typeof value === "string" && HEADER_SET.has(value));
   return {
     start,
-    end: start + LEDGER_HEADERS.length,
+    end: start + LEDGER_STORAGE_HEADERS.length,
     movedRight,
     needsWrite: !reuse,
     columns: LEDGER_HEADERS.map((header, i) => ({ header, column: ledgerColumnName(start + i) })),
