@@ -1382,7 +1382,7 @@ CREATE TABLE ledger_writes (
   CONSTRAINT ledger_writes_written_chk CHECK ((status = 'written') = (written_at IS NOT NULL))
 );
 CREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying', 'alerted'); -- 적을 것
-CREATE INDEX ledger_writes_audit_due_idx ON ledger_writes (audit_due_at) WHERE status='written' AND audit_due_at IS NOT NULL; -- 중복 정리 확인
+CREATE INDEX ledger_writes_audit_due_idx ON ledger_writes (audit_due_at) WHERE status = 'written' AND audit_due_at IS NOT NULL; -- 중복 정리 확인
 COMMENT ON TABLE ledger_writes IS 'TBL-047 장부 쓰기: 이벤트마다 한 번 남기고 실패하면 다시 적음(1-8)';
 
 -- TBL-048 ai_calls (CTX-001) ← SPEC-017, SPEC-020, SPEC-021, SPEC-068, SPEC-077 | terms: TERM-045
