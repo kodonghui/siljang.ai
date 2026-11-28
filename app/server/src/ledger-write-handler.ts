@@ -4,6 +4,7 @@ import type { ShopDb } from "./shop-scope";
 
 export interface LedgerWriteSnapshot {
   readonly shopId: string;
+  readonly eventId: string;
   readonly linkId: string;
   readonly file: string;
   readonly tab: string;

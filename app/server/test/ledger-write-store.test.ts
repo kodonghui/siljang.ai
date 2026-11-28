@@ -56,6 +56,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
       "INSERT INTO ledger_writes(id,shop_id,ledger_row_id,event_key,event_kind,next_attempt_at) VALUES($1,$3,$4,$5,'changed',now()),($2,$3,$4,$6,'changed',now())",
       [first, second, shop.shopId, row, `ledger:${first}:changed`, `ledger:${second}:changed`],
     );
+    await isolated.db.query("UPDATE ledger_writes SET created_at=created_at-interval '1 second' WHERE id=$1", [first]);
     await isolated.db.query(
       "UPDATE order_details SET lettering='최신 문구', allergy_consent='agreed', allergy_answer='장부에 없어야 함' WHERE shop_id=$1 AND order_id=$2",
       [shop.shopId, shop.orderId],
@@ -141,6 +142,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         )
       ).rows[0]?.our_columns.movedRight,
     ).toBe(true);
+    await isolated.db.query("UPDATE ledger_writes SET next_attempt_at=now()-interval '1 second' WHERE id=$1", [second]);
     expect((await claim(second)).rowCount).toBe(1);
     await isolated.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,$4,$5,NULL)", [
       shop.shopId,
@@ -306,9 +308,10 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
             mimeType: "application/vnd.google-apps.spreadsheet",
             capabilities: { canEdit: true },
           });
+        if (url.pathname.includes("/developerMetadata/")) return new Response(null, { status: 404 });
         if (init?.method === "POST") {
           written = JSON.parse(String(init.body));
-          return Response.json({ updates: { updatedRows: 1 } });
+          return Response.json({ spreadsheetId: file, replies: [{}, {}] });
         }
         if (url.pathname.includes("/values/"))
           return Response.json({ values: url.pathname.includes("1%3A1") ? [LEDGER_HEADERS] : [["주문번호"]] });

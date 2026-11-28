@@ -10,6 +10,7 @@ const item = { source: "ledger_write" as const, shopId, id: writeId, dueAt: new 
 const ctx = { job: "ledger_write", now: item.dueAt, leaseUntil: new Date("2026-11-28T00:02:00Z") };
 const row = {
   shopId,
+  eventId: writeId,
   linkId,
   file: "synthetic_sheet_1234567890",
   tab: "장부",

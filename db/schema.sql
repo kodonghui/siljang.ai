@@ -2831,6 +2831,12 @@ BEGIN
     WHERE w.shop_id=p_shop AND w.id=p_write AND w.status IN ('pending','retrying','alerted')
       AND w.next_attempt_at<=pg_catalog.statement_timestamp() FOR UPDATE;
   IF NOT FOUND THEN RETURN; END IF;
+  IF EXISTS (SELECT 1 FROM public.ledger_writes prior JOIN public.ledger_writes current ON current.shop_id=prior.shop_id AND current.ledger_row_id=prior.ledger_row_id
+      WHERE current.shop_id=p_shop AND current.id=p_write AND prior.status<>'written'
+        AND (prior.created_at,prior.id)<(current.created_at,current.id)) THEN
+    UPDATE public.ledger_writes SET next_attempt_at=pg_catalog.statement_timestamp()+interval '1 minute' WHERE shop_id=p_shop AND id=p_write;
+    RETURN;
+  END IF;
   SELECT l.* INTO v_link FROM public.ledger_links l WHERE l.shop_id=p_shop AND l.status IN ('linked','auth_lost') FOR UPDATE SKIP LOCKED;
   IF NOT FOUND THEN
     IF NOT EXISTS(SELECT 1 FROM public.ledger_links WHERE shop_id=p_shop AND status IN ('linked','auth_lost')) THEN

@@ -26,6 +26,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         throw new Error("invalid ledger snapshot");
       return {
         shopId: db.scope.shopId,
+        eventId: item.id,
         linkId: row.link_id,
         file: row.spreadsheet_id,
         tab: row.sheet_name,
@@ -48,7 +49,19 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
       if (access === null) return { status: "auth_lost" };
       const setup = await ledgerSheetSetup(key, { fetch: bounded }).connect(access, row.shopId, row.file, row.tab);
       if (setup === null) return { status: "auth_lost" };
-      await writeLedgerSheet({ file: row.file, tab: row.tab, access, setup, values: row.values }, { fetch: bounded });
+      await writeLedgerSheet(
+        {
+          file: row.file,
+          tab: row.tab,
+          access,
+          setup,
+          values: row.values,
+          shopId: row.shopId,
+          linkId: row.linkId,
+          eventId: row.eventId,
+        },
+        { fetch: bounded },
+      );
       return {
         status: "written",
         columns: { columns: setup.columns, movedRight: setup.movedRight, ownershipToken: setup.ownershipToken },
