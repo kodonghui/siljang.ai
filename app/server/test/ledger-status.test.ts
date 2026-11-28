@@ -320,15 +320,79 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     await link("linked");
     await expectProblem(await send(cookie), "version_conflict");
   });
+  it("교환 뒤 응답이 유실돼도 같은 인가 코드는 다시 구글에 보내지 않는다", async () => {
+    let exchanges = 0, sheetWrites = 0;
+    const fields = testFieldCrypto(new Map([[1, newFieldKey()]]), 1);
+    const overrides = {
+      fieldCrypto: fields,
+      ledgerAuthorization: { start: async () => { throw new Error("unused"); }, verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }) },
+      ledgerGoogle: { authorizeUrl: () => "", exchange: async () => { exchanges++; return { accessToken: new Secret("test-access"), refreshToken: new Secret("test-refresh"), expiresAt: NOW }; } },
+      ledgerSetup: { connect: async () => { sheetWrites++; throw new GoogleLedgerUnavailableError(); } },
+    } as unknown as ServiceOverrides;
+    const body = JSON.stringify({ baseRevision: null, code: "fixture-code", state: "fixture-state-123456789", spreadsheetId: SHEET, sheetName: "주문 장부" });
+    const send = (key: string) => app(true, false, overrides).request(PATH, { method: "PUT", headers: { cookie, Origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": key }, body }, testEnv());
+    const key = `ledger-${newUuid()}`;
+    await expectProblem(await send(key), "google_unavailable");
+    await expectProblem(await send(key), "google_authorization_failed");
+    await expectProblem(await send(`ledger-${newUuid()}`), "google_authorization_failed");
+    expect(exchanges).toBe(1);
+    expect(sheetWrites).toBe(1);
+    expect((await isolated.db.query("SELECT id FROM ledger_links WHERE shop_id=$1", [shop.shopId])).rowCount).toBe(0);
+  });
   it("토큰 교환 뒤 저장 실패도 구글 권한을 다시 받도록 안내한다", async () => {
     const fields = testFieldCrypto(new Map([[1, newFieldKey()]]), 1);
     const overrides = {
-      fieldCrypto: { ...fields, seal: async () => { throw new Error("sensitive-fixture"); } },
-      ledgerAuthorization: { start: async () => { throw new Error("unused"); }, verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }) },
-      ledgerGoogle: { authorizeUrl: () => "", exchange: async () => ({ accessToken: new Secret("test-access"), refreshToken: new Secret("test-refresh"), expiresAt: NOW }) },
-      ledgerSetup: { connect: async () => ({ sheetId: 1, start: 0, end: 1, movedRight: false, ownershipToken: "fixture-marker", columns: COLUMNS }) },
+      fieldCrypto: {
+        ...fields,
+        seal: async () => {
+          throw new Error("sensitive-fixture");
+        },
+      },
+      ledgerAuthorization: {
+        start: async () => {
+          throw new Error("unused");
+        },
+        verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }),
+      },
+      ledgerGoogle: {
+        authorizeUrl: () => "",
+        exchange: async () => ({
+          accessToken: new Secret("test-access"),
+          refreshToken: new Secret("test-refresh"),
+          expiresAt: NOW,
+        }),
+      },
+      ledgerSetup: {
+        connect: async () => ({
+          sheetId: 1,
+          start: 0,
+          end: 1,
+          movedRight: false,
+          ownershipToken: "fixture-marker",
+          columns: COLUMNS,
+        }),
+      },
     } as unknown as ServiceOverrides;
-    const response = await app(true, false, overrides).request(PATH, { method: "PUT", headers: { cookie, Origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": `ledger-${newUuid()}` }, body: JSON.stringify({ baseRevision: null, code: "fixture-code", state: "fixture-state-123456789", spreadsheetId: SHEET, sheetName: "주문 장부" }) }, testEnv());
+    const response = await app(true, false, overrides).request(
+      PATH,
+      {
+        method: "PUT",
+        headers: {
+          cookie,
+          Origin: "https://siljang.example",
+          "content-type": "application/json",
+          "Idempotency-Key": `ledger-${newUuid()}`,
+        },
+        body: JSON.stringify({
+          baseRevision: null,
+          code: "fixture-code",
+          state: "fixture-state-123456789",
+          spreadsheetId: SHEET,
+          sheetName: "주문 장부",
+        }),
+      },
+      testEnv(),
+    );
     await expectProblem(response, "google_unavailable");
     expect(logs.join("\n")).not.toContain("sensitive-fixture");
     expect((await isolated.db.query("SELECT id FROM ledger_links WHERE shop_id=$1", [shop.shopId])).rowCount).toBe(0);
@@ -769,7 +833,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     expect(url.searchParams.get("state")).toBe(body.state);
     expect(url.searchParams.get("redirect_uri")).toBe(redirect);
     expect(url.searchParams.get("client_id")).toBe(googleClient);
-    expect(url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/spreadsheets");
+    expect(url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/drive.file");
     expect(new Date(body.expiresAt).getTime()).toBe(NOW.getTime() + 600000);
     expect(
       await verifyLedgerOAuth(
