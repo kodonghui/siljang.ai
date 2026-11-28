@@ -454,14 +454,17 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
         },
       },
       ledgerSetup: {
-        connect: async () => ({
-          sheetId: 1,
-          start: 0,
-          end: 1,
-          movedRight: false,
-          ownershipToken: "fixture-marker",
-          columns: COLUMNS,
-        }),
+        connect: async (...args: unknown[]) => {
+          expect(args[4]).toEqual({ purpose: "link" });
+          return {
+            sheetId: 1,
+            start: 0,
+            end: 1,
+            movedRight: false,
+            ownershipToken: "fixture-marker",
+            columns: COLUMNS,
+          };
+        },
       },
     } as unknown as ServiceOverrides;
     const requestKey = `ledger-${newUuid()}`;

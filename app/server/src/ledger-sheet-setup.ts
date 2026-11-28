@@ -7,8 +7,10 @@ import {
   LEDGER_STORAGE_HEADERS,
   type LedgerColumnPlan,
   LedgerColumnsOverflowError,
+  ledgerColumnName,
   planLedgerColumns,
   signLedgerColumns,
+  signLegacyLedgerColumns,
   verifyLedgerColumns,
   verifyLegacyLedgerColumns,
 } from "./ledger-sheet-columns";
@@ -65,8 +67,39 @@ export function ledgerSheetSetup(
     }
     return null;
   }
+  async function legacyExisting(
+    snapshot: LedgerSheetSnapshot,
+    shopId: string,
+    spreadsheetId: string,
+  ): Promise<LedgerSheetSetup | null> {
+    for (const marker of [...snapshot.markers].sort((a, b) => b.start - a.start)) {
+      const scope = { shopId, spreadsheetId, sheetId: snapshot.sheetId };
+      const legacy = await verifyLegacyLedgerColumns(key, scope, marker.token, marker.start);
+      const current =
+        legacy === null ? await verifyLedgerColumns(key, scope, marker.token, marker.start, marker.end) : null;
+      if ((!legacy && !current) || !LEDGER_HEADERS.every((header, i) => snapshot.headers[marker.start + i] === header))
+        continue;
+      return {
+        sheetId: snapshot.sheetId,
+        start: marker.start,
+        end: marker.start + LEDGER_HEADERS.length,
+        sheetColumnCount: snapshot.columnCount,
+        sheetRowCount: snapshot.rowCount,
+        movedRight: (legacy ?? current)?.movedRight ?? false,
+        ownershipToken: marker.token,
+        columns: LEDGER_HEADERS.map((header, i) => ({ header, column: ledgerColumnName(marker.start + i) })),
+      };
+    }
+    return null;
+  }
   return {
-    async connect(access: Secret, shopId: string, file: string, tab: string): Promise<LedgerSheetSetup | null> {
+    async connect(
+      access: Secret,
+      shopId: string,
+      file: string,
+      tab: string,
+      mode: { readonly purpose: "link" | "write" } = { purpose: "write" },
+    ): Promise<LedgerSheetSetup | null> {
       if (!isUuid(shopId)) throw new TypeError("invalid ledger shop scope");
       try {
         const snapshot = await sheets.inspect(access, file, tab);
@@ -75,6 +108,78 @@ export function ledgerSheetSetup(
         if (reused !== null) {
           if (!(await sheets.canEdit(access, file))) return null;
           return reused;
+        }
+        if (mode.purpose === "link") {
+          const legacy = await legacyExisting(snapshot, shopId, file);
+          if (legacy) {
+            if (!(await sheets.canEdit(access, file))) return null;
+            return legacy;
+          }
+          const start = snapshot.columnCount;
+          if (start + LEDGER_HEADERS.length > LEDGER_MAX_COLUMNS) throw new LedgerColumnsOverflowError();
+          const movedRight = snapshot.headers.some(
+            (header) => typeof header === "string" && (LEDGER_HEADERS as readonly string[]).includes(header),
+          );
+          const token = await signLegacyLedgerColumns(
+            key,
+            { shopId, spreadsheetId: file, sheetId: snapshot.sheetId },
+            start,
+            movedRight,
+          );
+          const range = {
+            sheetId: snapshot.sheetId,
+            dimension: "COLUMNS",
+            startIndex: start,
+            endIndex: start + LEDGER_HEADERS.length,
+          };
+          const response = await send(`https://sheets.googleapis.com/v4/spreadsheets/${file}:batchUpdate`, {
+            method: "POST",
+            redirect: "manual",
+            signal: AbortSignal.timeout(options.timeoutMs ?? 5000),
+            headers: { Authorization: `Bearer ${access.reveal()}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              includeSpreadsheetInResponse: false,
+              requests: [
+                { insertDimension: { range, inheritFromBefore: true } },
+                {
+                  updateCells: {
+                    start: { sheetId: snapshot.sheetId, rowIndex: 0, columnIndex: start },
+                    rows: [{ values: LEDGER_HEADERS.map((value) => ({ userEnteredValue: { stringValue: value } })) }],
+                    fields: "userEnteredValue",
+                  },
+                },
+                {
+                  createDeveloperMetadata: {
+                    developerMetadata: {
+                      metadataKey: "siljang_columns_v1",
+                      metadataValue: token,
+                      visibility: "PROJECT",
+                      location: { dimensionRange: { ...range, endIndex: start + 1 } },
+                    },
+                  },
+                },
+              ],
+            }),
+          });
+          if (!response.ok && (await googleLedgerDenied(response))) return null;
+          const raw: unknown = JSON.parse(
+            new TextDecoder().decode(await readBytesLimited(response, 65536, () => new GoogleLedgerUnavailableError())),
+          );
+          if (
+            typeof raw !== "object" ||
+            raw === null ||
+            Array.isArray(raw) ||
+            (raw as Record<string, unknown>).spreadsheetId !== file ||
+            !Array.isArray((raw as Record<string, unknown>).replies) ||
+            ((raw as Record<string, unknown>).replies as unknown[]).length !== 3
+          )
+            throw new GoogleLedgerUnavailableError();
+          const checked = await sheets.inspect(access, file, tab);
+          if (!checked) throw new GoogleLedgerUnavailableError();
+          const created = await legacyExisting(checked, shopId, file);
+          if (!created || created.sheetId !== snapshot.sheetId || created.ownershipToken !== token)
+            throw new GoogleLedgerUnavailableError();
+          return created;
         }
         for (const marker of [...snapshot.markers].sort((a, b) => b.start - a.start)) {
           const scope = { shopId, spreadsheetId: file, sheetId: snapshot.sheetId };
@@ -263,7 +368,10 @@ export function ledgerSheetSetup(
           throw new GoogleLedgerUnavailableError();
         return verified;
       } catch (error) {
-        if (error instanceof LedgerColumnsOverflowError) return null;
+        if (error instanceof LedgerColumnsOverflowError) {
+          if (mode.purpose === "write") throw error;
+          return null;
+        }
         throw new GoogleLedgerUnavailableError();
       }
     },

@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { ledgerConfirmation } from "../src/ledger-confirmation";
 import { LEDGER_STORAGE_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
 import { ledgerRowDigest } from "../src/ledger-sheet-write";
@@ -170,6 +170,8 @@ it.skipIf(!(await import("./support/db")).TEST_DATABASE_URL)(
             inspect: async (input) => {
               inspected++;
               expect(input.orderId).toBe(shop.orderId);
+              expect(input.signal).toBeInstanceOf(AbortSignal);
+              expect(input.signal?.aborted).toBe(false);
               expect(input.refreshToken.reveal()).toBe("synthetic-refresh");
               return result;
             },
@@ -215,3 +217,37 @@ it.skipIf(!(await import("./support/db")).TEST_DATABASE_URL)(
   },
   30000,
 );
+
+it("DB 잠금이 풀리는 중단 신호가 오면 진행 중인 OAuth를 취소하고 뒤의 구글 조회를 시작하지 않는다", async () => {
+  const controller = new AbortController(),
+    key = new Secret("synthetic-key");
+  let started: (() => void) | undefined;
+  const began = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const send = vi.fn(async (_raw: string | URL | Request, init?: RequestInit) => {
+    started?.();
+    await new Promise<void>((resolve) => init?.signal?.addEventListener("abort", () => resolve(), { once: true }));
+    return Response.json({ access_token: "fake-access", token_type: "Bearer", expires_in: 3600 });
+  });
+  const svc = ledgerConfirmation(
+    key,
+    { clientId: new Secret("id"), clientSecret: new Secret("secret") },
+    { fetch: send },
+  );
+  const pending = svc.inspect({
+    shopId: crypto.randomUUID(),
+    linkId: crypto.randomUUID(),
+    orderId: crypto.randomUUID(),
+    orderNo: "ABC123",
+    file: "synthetic_sheet_1234567890",
+    tab: "장부",
+    refreshToken: new Secret("synthetic-refresh"),
+    signal: controller.signal,
+  });
+  await began;
+  controller.abort();
+  await expect(pending).rejects.toThrow();
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(send.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+});

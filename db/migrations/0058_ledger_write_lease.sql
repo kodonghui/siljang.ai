@@ -276,9 +276,13 @@ CREATE FUNCTION siljang_ledger_private.finish_ledger_write(p_shop uuid,p_write u
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
 DECLARE v_link uuid; v_row uuid; v_order uuid; v_attempts int; v_failed timestamptz; v_alerted timestamptz; v_task uuid; v_delay interval; v_audit boolean; v_deadline timestamptz; v_checks integer; v_affected uuid; v_purged timestamptz;
 BEGIN
-  PERFORM 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled FOR SHARE;
+  IF p_result='overflow' THEN
+    PERFORM 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled FOR UPDATE;
+  ELSE
+    PERFORM 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled FOR SHARE;
+  END IF;
   IF NOT FOUND THEN RETURN false; END IF;
-  IF p_result NOT IN ('written','retry','auth_lost','uncertain','duplicate','conflict','audit_ok','audit_duplicate','audit_missing','audit_retry') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
+  IF p_result NOT IN ('written','retry','auth_lost','uncertain','duplicate','conflict','overflow','audit_ok','audit_duplicate','audit_missing','audit_retry') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
   IF p_result='written' AND p_columns IS NOT NULL AND p_columns ? 'sheetHash' AND (p_columns->>'sheetHash') !~ '^[A-Za-z0-9_-]{43}$' THEN RETURN false; END IF;
   IF p_result='written' AND p_columns ? 'keyVersion' AND (p_columns->>'keyVersion') !~ '^[A-Za-z0-9_-]{43}$' THEN RETURN false; END IF;
   IF p_result='written' AND p_columns ? 'targetKey' AND (p_columns->>'targetKey') !~ '^[A-Za-z0-9_-]{43}$' THEN RETURN false; END IF;
@@ -303,6 +307,20 @@ BEGIN
       UPDATE public.ledger_writes SET status='unlinked',next_attempt_at=NULL,write_uncertain=false,write_in_flight=false,checkpoint_hashes=NULL,resume_needs_audit=false WHERE shop_id=p_shop AND id=p_write;
     END IF;
     UPDATE public.ledger_links SET write_lease_id=NULL,write_lease_until=NULL WHERE shop_id=p_shop AND id=v_link;
+    RETURN true;
+  END IF;
+  IF p_result='overflow' THEN
+    IF v_audit THEN
+      UPDATE public.ledger_writes SET audit_due_at=p_now WHERE shop_id=p_shop AND id=p_write;
+    ELSE
+      UPDATE public.ledger_writes SET write_in_flight=false,next_attempt_at=p_now WHERE shop_id=p_shop AND id=p_write;
+    END IF;
+    INSERT INTO public.owner_tasks(shop_id,kind,event_key,opened_at) VALUES(p_shop,'ledger_relink','task:ledger_columns:'||v_link::text,p_now)
+      ON CONFLICT(shop_id,event_key) DO UPDATE SET closed_at=NULL RETURNING id INTO v_task;
+    INSERT INTO public.owner_alerts(shop_id,kind,event_key,owner_task_id,next_attempt_at,created_at)
+      VALUES(p_shop,'ledger_failing','alert:ledger_columns:'||v_link::text,v_task,p_now,p_now) ON CONFLICT(shop_id,event_key) DO NOTHING;
+    UPDATE public.ledger_links SET write_lease_id=NULL,write_lease_until=NULL WHERE shop_id=p_shop AND id=v_link;
+    UPDATE public.shops SET ledger_write_enabled=false WHERE id=p_shop;
     RETURN true;
   END IF;
   IF NOT v_audit THEN UPDATE public.ledger_writes SET write_in_flight=false, checkpoint_hashes=CASE WHEN p_result IN ('written','conflict') OR (p_result='retry' AND NOT write_uncertain) THEN NULL ELSE checkpoint_hashes END WHERE shop_id=p_shop AND id=p_write; END IF;

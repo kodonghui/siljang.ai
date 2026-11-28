@@ -106,6 +106,26 @@ export async function verifyLegacyLedgerColumns(
     return null;
   return { movedRight };
 }
+/** 연결만 할 때는 기존 12열 서명을 만들고 쓰기용 숨김 열은 나중에 준비한다. */
+export async function signLegacyLedgerColumns(
+  key: Secret,
+  scope: LedgerSheetScope,
+  start: number,
+  movedRight: boolean,
+): Promise<string> {
+  if (
+    !validScope(scope) ||
+    !Number.isSafeInteger(start) ||
+    start < 0 ||
+    start + LEDGER_HEADERS.length > LEDGER_MAX_COLUMNS ||
+    typeof movedRight !== "boolean"
+  )
+    throw new RangeError("invalid legacy ledger column scope");
+  const signature = toBase64Url(
+    new Uint8Array(await crypto.subtle.sign("HMAC", await signingKey(key), data(scope, start, movedRight, true))),
+  );
+  return `c1.${start.toString(36)}.${movedRight ? 1 : 0}.${signature}`;
+}
 export function ledgerColumnName(index: number): string {
   if (!Number.isSafeInteger(index) || index < 0 || index >= LEDGER_MAX_COLUMNS)
     throw new RangeError("invalid ledger column");

@@ -13,6 +13,7 @@ export interface LedgerConfirmationInput {
   readonly file: string;
   readonly tab: string;
   readonly refreshToken: Secret;
+  readonly signal?: AbortSignal;
 }
 export interface LedgerConfirmationResult {
   readonly eventId: string | null;
@@ -30,8 +31,14 @@ export function ledgerConfirmation(
     async inspect(input: LedgerConfirmationInput): Promise<LedgerConfirmationResult> {
       const deadline = AbortSignal.timeout(options.timeoutMs ?? 15000),
         send = options.fetch ?? fetch;
-      const bounded: typeof fetch = async (request, init) =>
-        send(request, { ...init, signal: init?.signal ? AbortSignal.any([deadline, init.signal]) : deadline });
+      const bounded: typeof fetch = async (request, init) => {
+        const signals = [deadline, input.signal, init?.signal].filter((value): value is AbortSignal => value != null);
+        const signal = AbortSignal.any(signals);
+        signal.throwIfAborted();
+        const response = await send(request, { ...init, signal });
+        signal.throwIfAborted();
+        return response;
+      };
       const access = await googleLedgerRefresh(config, input.refreshToken, { fetch: bounded });
       if (!access) throw new GoogleLedgerUnavailableError();
       const sheets = googleLedgerSheets({ fetch: bounded }),

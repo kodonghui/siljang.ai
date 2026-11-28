@@ -34,6 +34,9 @@ export async function confirmOwnerLedgerOrder(r: ShopRequest): Promise<Response>
       ).rows[0];
       if (!prepared || !prepared.envelope) throw new ApiError("not_found");
       try {
+        const signal = db.signal;
+        if (!signal) throw new Error("ledger confirmation requires a transaction signal");
+        signal.throwIfAborted();
         const token = await r.services.fieldCrypto().open(prepared.envelope, {
           purpose: "ledger_links.oauth_token",
           shopId: db.scope.shopId,
@@ -47,6 +50,7 @@ export async function confirmOwnerLedgerOrder(r: ShopRequest): Promise<Response>
           file: prepared.spreadsheet_id,
           tab: prepared.sheet_name,
           refreshToken: new Secret(token),
+          signal,
         });
         const saved = await db.run<{ ok: boolean }>(
           "SELECT siljang_ledger_private.confirm_ledger_order($1,$2,$3,$4,$5,$6,$7,$8) AS ok",

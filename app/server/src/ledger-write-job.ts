@@ -4,6 +4,7 @@ import type { LedgerCheckpoint } from "./ledger-checkpoint";
 import { guardedLedgerFetch } from "./ledger-guarded-fetch";
 import { openLedgerJobCredential } from "./ledger-job-credential";
 import { googleLedgerRefresh } from "./ledger-refresh";
+import { LedgerColumnsOverflowError } from "./ledger-sheet-columns";
 import { ledgerSheetSetup } from "./ledger-sheet-setup";
 import { auditLedgerSheet, LedgerConflictError, ledgerRowDigest, writeLedgerSheet } from "./ledger-sheet-write";
 import { createLedgerWriteHandler, type LedgerWriteSnapshot } from "./ledger-write-handler";
@@ -87,7 +88,13 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
       const bounded = guardedLedgerFetch(guard, deadline);
       const access = await googleLedgerRefresh(settings.ledgerOAuth, credential, { fetch: bounded });
       if (access === null) return { status: row.auditing ? "audit_retry" : "auth_lost" };
-      const setup = await ledgerSheetSetup(key, { fetch: bounded }).connect(access, row.shopId, row.file, row.tab);
+      let setup: Awaited<ReturnType<ReturnType<typeof ledgerSheetSetup>["connect"]>>;
+      try {
+        setup = await ledgerSheetSetup(key, { fetch: bounded }).connect(access, row.shopId, row.file, row.tab);
+      } catch (error) {
+        if (error instanceof LedgerColumnsOverflowError) return { status: "overflow" };
+        throw error;
+      }
       if (setup === null) return { status: row.auditing ? "audit_retry" : "auth_lost" };
       const input = {
         file: row.file,

@@ -29,6 +29,8 @@ interface TaskRow {
   cursor_at: string;
 }
 export function ledgerDuplicateSummary(eventKey: string, orderNo: string | null): string | null {
+  if (eventKey.startsWith("task:ledger_columns:") && isUuid(eventKey.slice("task:ledger_columns:".length)))
+    return "구글 시트의 열이 가득 차 장부 쓰기를 껐어요. 필요 없는 열을 지워 주세요";
   if (eventKey.startsWith("task:ledger_conflict:")) {
     const id = eventKey.slice("task:ledger_conflict:".length);
     if (isUuid(id) && orderNo !== null && /^[0-9A-Z]{6,8}$/.test(orderNo))

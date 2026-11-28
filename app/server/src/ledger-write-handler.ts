@@ -36,6 +36,7 @@ type Result =
   | {
       readonly status:
         | "auth_lost"
+        | "overflow"
         | "retry"
         | "uncertain"
         | "duplicate"
