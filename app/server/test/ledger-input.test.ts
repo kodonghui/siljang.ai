@@ -79,6 +79,7 @@ it.each([
   ["file URL", () => ({ ...valid, spreadsheetId: "https://example.com/file" }), "/spreadsheetId"],
   ["blank tab", () => ({ ...valid, sheetName: "  " }), "/sheetName"],
   ["NUL tab", () => ({ ...valid, sheetName: "합성\0탭" }), "/sheetName"],
+  ["control tab", () => ({ ...valid, sheetName: "합성\n탭" }), "/sheetName"],
   ["long tab", () => ({ ...valid, sheetName: "가".repeat(101) }), "/sheetName"],
   ["token field", () => ({ ...valid, accessToken: crypto.randomUUID() }), "/accessToken"],
 ] as const)("잘못된 장부 연결 %s는 값 없는422다", (_name, input, field) => {
