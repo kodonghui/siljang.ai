@@ -252,3 +252,4 @@ REVOKE SELECT (shop_id,status,first_failed_at,next_attempt_at), UPDATE (status,n
 GRANT EXECUTE ON FUNCTION read_owner_ledger(uuid,uuid,uuid),unlink_owner_ledger(uuid,uuid,timestamptz) TO :"runtime_role";
 GRANT USAGE ON SCHEMA private TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION private.store_ledger_credential(uuid,uuid,uuid,text) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION private.create_owner_ledger(uuid,uuid,uuid,text,text,jsonb,text,timestamptz) TO :"runtime_role";
