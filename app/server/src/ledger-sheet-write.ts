@@ -114,12 +114,14 @@ export async function writeLedgerSheet(
     readonly eventId: string;
     readonly orderId: string;
     readonly uncertain?: boolean;
-    readonly resumeApproved?: boolean;
+    readonly confirmedExisting?: boolean;
+    readonly confirmRow?: (row: readonly LedgerCell[] | null) => Promise<void>;
     readonly hashKey: Secret;
     readonly expectedDigest?: string | null;
     readonly expectedDigests?: Readonly<Record<string, string>>;
     readonly checkpoint?: LedgerCheckpoint | null;
     readonly saveCheckpoint?: (checkpoint: LedgerCheckpoint) => Promise<void>;
+    readonly purgedOrders?: (ids: readonly string[]) => Promise<ReadonlySet<string>>;
     readonly verifiedDigest?: (digest: string) => void;
   },
   options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {},
@@ -289,11 +291,32 @@ export async function writeLedgerSheet(
     const context = { file: input.file, tab: input.tab, eventId: input.eventId, orderId: input.orderId };
     const matches = current.flatMap((row, index) => (row[0] === input.values[0] ? [index] : []));
     const idMatches = current.flatMap((row, index) => (row[13] === orderId ? [index] : []));
+    if (input.confirmRow) {
+      if (matches.length > 1 || idMatches.length > 1) throw new LedgerDuplicateError();
+      const target = matches[0];
+      if (target === undefined && idMatches.length > 0) throw new LedgerConflictError("order number changed");
+      if (
+        target !== undefined &&
+        (current[target]?.[13] !== orderId || !/^[0-9a-f]{32}$/.test(String(current[target]?.[12])))
+      )
+        throw new LedgerConflictError("ledger identity changed");
+      await input.confirmRow(target === undefined ? null : (current[target] ?? null));
+      return;
+    }
     if (saved) {
       const alreadySent = current.some((row) => row[12] === eventId && row[13] === orderId);
       let comparison: Awaited<ReturnType<typeof compareLedgerCheckpoint>>;
       try {
-        comparison = await compareLedgerCheckpoint(input.hashKey, context, saved, current, alreadySent);
+        const ids = new Set(saved.rows.flatMap((row) => (row.orderId ? [row.orderId] : [])));
+        for (const row of current) {
+          const id = row[13];
+          if (typeof id === "string" && /^[0-9a-f]{32}$/i.test(id))
+            ids.add(
+              `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`.toLowerCase(),
+            );
+        }
+        const ignored = input.purgedOrders ? await input.purgedOrders([...ids]) : new Set<string>();
+        comparison = await compareLedgerCheckpoint(input.hashKey, context, saved, current, alreadySent, ignored);
       } catch {
         throw new LedgerConflictError(
           "invalid comparison baseline",
@@ -314,6 +337,7 @@ export async function writeLedgerSheet(
       }
     }
     if (matches.length > 1 || idMatches.length > 1) throw new LedgerDuplicateError();
+    if (input.confirmedExisting && matches.length === 0) throw new LedgerConflictError("confirmed row missing");
     const before = current,
       prior = indexed(before),
       target = matches[0];
@@ -322,7 +346,7 @@ export async function writeLedgerSheet(
       const old = current[target];
       if (!old || old[13] !== orderId) throw new LedgerConflictError("order ID changed");
       const expected = input.expectedDigests ? input.expectedDigests[String(old[12])] : input.expectedDigest;
-      if (!input.resumeApproved && (!expected || (await ledgerRowDigest(input.hashKey, old)) !== expected))
+      if (!expected || (await ledgerRowDigest(input.hashKey, old)) !== expected)
         throw new LedgerConflictError("target edited");
     } else if (prior.has(`id:${orderId}`)) throw new LedgerConflictError("order number changed");
     const checkpoint = input.saveCheckpoint

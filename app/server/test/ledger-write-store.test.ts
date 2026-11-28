@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { DUE_SOURCES } from "../src/due-sources";
 import { runDueJobs } from "../src/job-runner";
 import { LEDGER_STORAGE_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
+import { ledgerRowDigest } from "../src/ledger-sheet-write";
 import { ledgerWriteJob } from "../src/ledger-write-job";
 import { createServices } from "../src/services";
 import { readSettings, Secret } from "../src/settings";
@@ -433,27 +434,25 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
       [write, shop.shopId, row, `ledger:${write}:changed`],
     );
     const lease = new Date(Date.now() + 120000);
-    for (let i = 0; i < 2; i++) {
-      await isolated.db.query("UPDATE ledger_writes SET next_attempt_at=now()-interval '1 minute' WHERE id=$1", [
-        write,
-      ]);
-      expect(
-        (
-          await isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
-            shop.shopId,
-            write,
-            lease,
-          ])
-        ).rowCount,
-      ).toBe(1);
-      await isolated.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,$4,$5,NULL)", [
-        shop.shopId,
-        write,
-        lease,
-        "duplicate",
-        new Date(),
-      ]);
-    }
+    await isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
+      shop.shopId,
+      write,
+      lease,
+    ]);
+    await isolated.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,'duplicate',now(),NULL)", [
+      shop.shopId,
+      write,
+      lease,
+    ]);
+    expect(
+      (
+        await isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
+          shop.shopId,
+          write,
+          lease,
+        ])
+      ).rowCount,
+    ).toBe(0);
     expect(
       (
         await isolated.db.query("SELECT id FROM owner_tasks WHERE shop_id=$1 AND event_key=$2 AND closed_at IS NULL", [
@@ -470,18 +469,33 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         ])
       ).rowCount,
     ).toBe(1);
-    await isolated.db.query("UPDATE ledger_writes SET next_attempt_at=now()-interval '1 minute' WHERE id=$1", [write]);
-    await isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
+    const task = (
+      await isolated.db.query<{ id: string }>(
+        "SELECT id FROM owner_tasks WHERE shop_id=$1 AND order_id=$2 AND closed_at IS NULL",
+        [shop.shopId, shop.orderId],
+      )
+    ).rows[0]?.id;
+    expect(
+      (
+        await isolated.db.query<{ ok: boolean }>(
+          "SELECT siljang_ledger_private.confirm_ledger_order($1,$2,$3,$4,$5,NULL,NULL,$6) AS ok",
+          [shop.shopId, shop.ownerId, task, link, "T".repeat(43), "V".repeat(43)],
+        )
+      ).rows[0]?.ok,
+    ).toBe(true);
+    expect(
+      (
+        await isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
+          shop.shopId,
+          write,
+          lease,
+        ])
+      ).rowCount,
+    ).toBe(1);
+    await isolated.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,'written',now(),NULL)", [
       shop.shopId,
       write,
       lease,
-    ]);
-    await isolated.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,$4,$5,NULL)", [
-      shop.shopId,
-      write,
-      lease,
-      "written",
-      new Date(),
     ]);
     expect(
       (
@@ -785,6 +799,29 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         write,
       ]);
       resolved = true;
+      const task = (
+        await isolated.db.query<{ id: string }>(
+          "SELECT id FROM owner_tasks WHERE shop_id=$1 AND event_key=$2 AND closed_at IS NULL",
+          [shop.shopId, `task:ledger_duplicate:${shop.orderId}`],
+        )
+      ).rows[0]?.id;
+      const confirmedRow = sheetRow as (string | number)[] | null;
+      if (!confirmedRow || !task) throw new Error("합성 장부 확인 대상 없음");
+      const signingKey = new Secret(secretText);
+      const confirmed = await isolated.db.query<{ ok: boolean }>(
+        "SELECT siljang_ledger_private.confirm_ledger_order($1,$2,$3,$4,$5,$6,$7,$8) AS ok",
+        [
+          shop.shopId,
+          shop.ownerId,
+          task,
+          link,
+          await ledgerRowDigest(signingKey, ["ledger-target", file, tab]),
+          String(confirmedRow[12]),
+          await ledgerRowDigest(signingKey, confirmedRow),
+          await ledgerRowDigest(signingKey, ["ledger-key-version-v1"]),
+        ],
+      );
+      expect(confirmed.rows[0]?.ok).toBe(true);
       await runDueJobs({
         db,
         now: new Date(),

@@ -98,3 +98,24 @@ it("파일 선택 오류가 나면 처리 중 상태를 풀고 권한을 다시 
   await screen.findByText("파일 선택을 열 수 없어요. 구글 연결을 다시 해 주세요");
   expect((screen.getByRole("button", { name: "구글 권한 다시 연결" }) as HTMLButtonElement).disabled).toBe(false);
 });
+it("연결된 장부에서 확인할 구글 시트를 연다", async () => {
+  const id = "synthetic_sheet_1234567890";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      json({ status: "linked", spreadsheetId: id, sheetName: "장부", revision: "v1", unwrittenCount: 1, columns: [] }),
+    ),
+  );
+  render(
+    <LedgerScreen
+      shopId="shop-1"
+      shopName="가게"
+      onNavigate={vi.fn()}
+      onSessionExpired={vi.fn()}
+      onRegisterShop={vi.fn()}
+      onLogout={vi.fn()}
+    />,
+  );
+  const link = await screen.findByRole("link", { name: "구글 시트 열기" });
+  expect(link.getAttribute("href")).toBe(`https://docs.google.com/spreadsheets/d/${id}/edit`);
+});

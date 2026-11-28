@@ -1350,6 +1350,7 @@ CREATE TABLE ledger_rows (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 장부 행 ID
   shop_id           uuid NOT NULL,                       -- 가게
   order_id          uuid NOT NULL,                       -- 주문. 재제작 주문의 행은 두지 않고 그 이벤트를 원래 주문 행에 적음(트리거 ledger_rows_remake, R21, SPEC-064)
+  confirmed_target_key text,                            -- 사장님이 확인한 장부 대상의 서명
   sheet_key_version text,                                -- 장부 서명의 HMAC 키 버전
   sheet_hash        text,                                -- 마지막 장부 행의 앱 서명
   sheet_hashes      jsonb NOT NULL DEFAULT '{}'::jsonb, -- 대상과 기록 ID별 장부 행의 앱 서명
@@ -1376,7 +1377,6 @@ CREATE TABLE ledger_writes (
   written_at       timestamptz,                          -- 적힌 시각. 적을 때는 그 주문의 지금 값으로(옛 값이 새 값을 덮지 않음)
   created_at       timestamptz NOT NULL DEFAULT now(),   -- 남긴 시각
   write_uncertain  boolean NOT NULL DEFAULT false,       -- 외부 쓰기 결과 불확실 여부
-  resume_approved  boolean NOT NULL DEFAULT false,       -- 확인 후 재개 허용
   resume_needs_audit boolean NOT NULL DEFAULT false,    -- 재개 뒤 중복 확인 필요
   write_in_flight  boolean NOT NULL DEFAULT false,       -- 결과 기록 전 외부 쓰기 시도
   audit_due_at     timestamptz,                          -- 중복 정리 다음 확인 시각
@@ -2843,6 +2843,11 @@ CREATE FUNCTION siljang_ledger_private.guard_ledger_write(p_shop uuid,p_link uui
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
 BEGIN
   IF p_lease IS NULL OR p_lease<=pg_catalog.statement_timestamp() THEN RETURN false; END IF;
+  -- 개인정보 삭제와 전송은 주문 잠금으로 직렬화한다. 삭제가 먼저 끝났으면 전송하지 않는다.
+  PERFORM o.id FROM public.ledger_writes w JOIN public.ledger_rows r ON r.shop_id=w.shop_id AND r.id=w.ledger_row_id
+    JOIN public.orders o ON o.shop_id=r.shop_id AND o.id=r.order_id
+    WHERE w.shop_id=p_shop AND w.id=p_write AND o.personal_data_purged_at IS NULL FOR SHARE OF o;
+  IF NOT FOUND THEN RETURN false; END IF;
   PERFORM 1 FROM public.ledger_links l WHERE l.shop_id=p_shop AND l.id=p_link AND l.spreadsheet_id=p_file AND l.sheet_name=p_tab
     AND l.status IN ('linked','auth_lost') AND l.write_lease_id=p_write AND l.write_lease_until=p_lease FOR UPDATE;
   IF NOT FOUND THEN RETURN false; END IF;
@@ -2892,13 +2897,84 @@ END
 $fn$;
 REVOKE ALL ON FUNCTION siljang_ledger_private.save_ledger_checkpoint(uuid,uuid,timestamptz,uuid,jsonb) FROM PUBLIC;
 
+-- 사후 비교에서 삭제된 주문은 저장 기준과 똑같이 제외한다. 주문 ID만 돌려준다.
+CREATE FUNCTION siljang_ledger_private.ledger_purged_orders(p_shop uuid,p_link uuid,p_write uuid,p_lease timestamptz,p_ids uuid[])
+RETURNS SETOF uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+  SELECT o.id FROM public.orders o WHERE o.shop_id=p_shop AND o.id=ANY(p_ids) AND o.personal_data_purged_at IS NOT NULL
+    AND pg_catalog.cardinality(p_ids)<=10000 AND EXISTS (SELECT 1 FROM public.ledger_links l JOIN public.ledger_writes w ON w.shop_id=l.shop_id
+      WHERE l.shop_id=p_shop AND l.id=p_link AND l.status IN ('linked','auth_lost') AND l.write_lease_id=p_write
+        AND l.write_lease_until=p_lease AND p_lease>pg_catalog.statement_timestamp() AND w.id=p_write AND w.next_attempt_at=p_lease
+        AND w.status IN ('pending','retrying','alerted'))
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.ledger_purged_orders(uuid,uuid,uuid,timestamptz,uuid[]) FROM PUBLIC;
+
+-- 사장님과 열린 주문별 할 일을 확인하고, 주문·연결 잠금 아래 앱 암호문만 반환한다.
+CREATE FUNCTION siljang_ledger_private.prepare_ledger_confirmation(p_shop uuid,p_owner uuid,p_task uuid)
+RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,envelope text,order_id uuid,order_no text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
+DECLARE v_order uuid; v_number text; v_link public.ledger_links%ROWTYPE; v_envelope text;
+BEGIN
+  SELECT o.id,o.order_no INTO v_order,v_number FROM public.owner_tasks t
+    JOIN public.orders o ON o.shop_id=t.shop_id AND o.id=t.order_id
+    JOIN public.shops s ON s.id=t.shop_id AND s.owner_id=p_owner
+    WHERE t.shop_id=p_shop AND t.id=p_task AND t.closed_at IS NULL AND o.personal_data_purged_at IS NULL
+      AND t.event_key IN ('task:ledger_conflict:'||o.id::text,'task:ledger_duplicate:'||o.id::text) FOR SHARE OF o;
+  IF NOT FOUND THEN RETURN; END IF;
+  SELECT l.* INTO v_link FROM public.ledger_links l WHERE l.shop_id=p_shop AND l.status='linked' FOR UPDATE;
+  IF NOT FOUND OR v_link.write_lease_until>pg_catalog.statement_timestamp() THEN RETURN; END IF;
+  PERFORM 1 FROM public.owner_tasks t WHERE t.shop_id=p_shop AND t.id=p_task AND t.order_id=v_order AND t.closed_at IS NULL FOR UPDATE;
+  IF NOT FOUND OR pg_catalog.to_regclass('vault.decrypted_secrets') IS NULL THEN RETURN; END IF;
+  EXECUTE 'SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id::text=$1 AND name=$2'
+    INTO v_envelope USING v_link.credential_ref,'siljang-ledger:'||p_shop::text||':'||v_link.id::text;
+  IF v_envelope !~ '^v[1-9][0-9]{0,2}:[A-Za-z0-9_-]{39,}$' OR length(v_envelope)>12000 THEN RETURN; END IF;
+  RETURN QUERY SELECT v_link.id,v_link.spreadsheet_id,v_link.sheet_name,v_envelope,v_order,v_number;
+END
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.prepare_ledger_confirmation(uuid,uuid,uuid) FROM PUBLIC;
+
+-- 서버가 같은 트랜잭션에서 읽은 행의 서명만 저장하고 해당 주문만 재개한다.
+CREATE FUNCTION siljang_ledger_private.confirm_ledger_order(p_shop uuid,p_owner uuid,p_task uuid,p_link uuid,p_target text,p_event text,p_hash text,p_key_version text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
+DECLARE v_order uuid; v_row uuid;
+BEGIN
+  IF coalesce(p_target,'') !~ '^[A-Za-z0-9_-]{43}$' OR coalesce(p_key_version,'') !~ '^[A-Za-z0-9_-]{43}$'
+    OR NOT ((p_event IS NULL AND p_hash IS NULL) OR (coalesce(p_event,'') ~ '^[0-9a-f]{32}$' AND coalesce(p_hash,'') ~ '^[A-Za-z0-9_-]{43}$')) THEN RETURN false; END IF;
+  SELECT o.id INTO v_order FROM public.owner_tasks t JOIN public.orders o ON o.shop_id=t.shop_id AND o.id=t.order_id
+    JOIN public.shops s ON s.id=t.shop_id AND s.owner_id=p_owner
+    WHERE t.shop_id=p_shop AND t.id=p_task AND t.closed_at IS NULL AND o.personal_data_purged_at IS NULL
+      AND t.event_key IN ('task:ledger_conflict:'||o.id::text,'task:ledger_duplicate:'||o.id::text) FOR SHARE OF o;
+  IF NOT FOUND THEN RETURN false; END IF;
+  PERFORM 1 FROM public.ledger_links l WHERE l.shop_id=p_shop AND l.id=p_link AND l.status='linked'
+    AND (l.write_lease_until IS NULL OR l.write_lease_until<=pg_catalog.statement_timestamp()) FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
+  PERFORM 1 FROM public.owner_tasks t WHERE t.shop_id=p_shop AND t.id=p_task AND t.order_id=v_order AND t.closed_at IS NULL FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
+  SELECT id INTO v_row FROM public.ledger_rows WHERE shop_id=p_shop AND order_id=v_order FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
+  UPDATE public.ledger_rows SET sheet_hash=p_hash,sheet_key_version=p_key_version,confirmed_target_key=p_target,
+    sheet_hashes=CASE WHEN p_hash IS NULL THEN '{}'::jsonb ELSE pg_catalog.jsonb_build_object(p_target,pg_catalog.jsonb_build_object(p_event,p_hash)) END
+    WHERE shop_id=p_shop AND id=v_row;
+  UPDATE public.ledger_writes SET status='pending',next_attempt_at=CASE WHEN write_uncertain OR write_in_flight THEN pg_catalog.statement_timestamp()+interval '5 minutes' ELSE pg_catalog.statement_timestamp() END,
+    resume_needs_audit=resume_needs_audit OR write_uncertain OR write_in_flight,write_uncertain=false,write_in_flight=false,checkpoint_hashes=NULL
+    WHERE shop_id=p_shop AND ledger_row_id=v_row AND status IN ('unlinked','retrying','alerted') AND last_error_kind IN ('conflict','duplicate');
+  IF NOT EXISTS (SELECT 1 FROM public.ledger_writes WHERE shop_id=p_shop AND ledger_row_id=v_row AND status IN ('pending','retrying','alerted')) THEN
+    UPDATE public.ledger_writes SET status='pending',written_at=NULL,next_attempt_at=pg_catalog.statement_timestamp(),audit_due_at=NULL,audit_deadline=NULL,write_uncertain=false,audit_repair_link_id=p_link
+      WHERE shop_id=p_shop AND id=(SELECT w.id FROM public.ledger_writes w WHERE w.shop_id=p_shop AND w.ledger_row_id=v_row AND w.status='written' ORDER BY w.created_at DESC,w.id DESC LIMIT 1);
+  END IF;
+  UPDATE public.owner_tasks SET closed_at=pg_catalog.statement_timestamp() WHERE shop_id=p_shop AND order_id=v_order AND closed_at IS NULL
+    AND event_key IN ('task:ledger_conflict:'||v_order::text,'task:ledger_duplicate:'||v_order::text);
+  RETURN true;
+END
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.confirm_ledger_order(uuid,uuid,uuid,uuid,text,text,text,text) FROM PUBLIC;
+
 CREATE FUNCTION siljang_ledger_private.claim_ledger_write(p_shop uuid,p_write uuid,p_lease timestamptz)
-RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,row_values jsonb,uncertain boolean,auditing boolean,order_id uuid,expected_hash text,expected_hashes jsonb,checkpoint_hashes jsonb,resume_approved boolean,sheet_key_version text)
+RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,row_values jsonb,uncertain boolean,auditing boolean,order_id uuid,expected_hash text,expected_hashes jsonb,checkpoint_hashes jsonb,sheet_key_version text,confirmed_target_key text)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
-DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb; v_uncertain boolean; v_audit boolean; v_in_flight boolean; v_hash text; v_hashes jsonb; v_checkpoint jsonb; v_resume boolean; v_key_version text;
+DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb; v_uncertain boolean; v_audit boolean; v_in_flight boolean; v_hash text; v_hashes jsonb; v_checkpoint jsonb; v_key_version text; v_confirmed text;
 BEGIN
   IF p_lease IS NULL OR p_lease<=pg_catalog.statement_timestamp() OR p_lease>pg_catalog.statement_timestamp()+interval '5 minutes' THEN RETURN; END IF;
-  SELECT w.ledger_row_id,w.write_uncertain,(w.status='written'),w.write_in_flight,w.checkpoint_hashes,w.resume_approved INTO v_order,v_uncertain,v_audit,v_in_flight,v_checkpoint,v_resume FROM public.ledger_writes w
+  SELECT w.ledger_row_id,w.write_uncertain,(w.status='written'),w.write_in_flight,w.checkpoint_hashes INTO v_order,v_uncertain,v_audit,v_in_flight,v_checkpoint FROM public.ledger_writes w
     WHERE w.shop_id=p_shop AND w.id=p_write AND ((w.status IN ('pending','retrying','alerted') AND w.next_attempt_at<=pg_catalog.statement_timestamp()) OR (w.status='written' AND w.audit_due_at<=pg_catalog.statement_timestamp())) FOR UPDATE;
   IF NOT FOUND THEN RETURN; END IF;
   IF NOT v_audit AND v_in_flight THEN
@@ -2906,7 +2982,7 @@ BEGIN
     RETURN;
   END IF;
   IF NOT v_audit AND EXISTS (SELECT 1 FROM public.ledger_rows r JOIN public.owner_tasks t ON t.shop_id=r.shop_id AND t.order_id=r.order_id
-      WHERE r.shop_id=p_shop AND r.id=v_order AND t.event_key='task:ledger_conflict:'||r.order_id::text AND t.closed_at IS NULL) THEN
+      WHERE r.shop_id=p_shop AND r.id=v_order AND t.event_key IN ('task:ledger_conflict:'||r.order_id::text,'task:ledger_duplicate:'||r.order_id::text) AND t.closed_at IS NULL) THEN
     UPDATE public.ledger_writes SET status='unlinked',next_attempt_at=NULL,last_error_kind='conflict' WHERE shop_id=p_shop AND id=p_write;
     RETURN;
   END IF;
@@ -2932,7 +3008,7 @@ BEGIN
     ELSE UPDATE public.ledger_writes SET next_attempt_at=pg_catalog.statement_timestamp()+interval '1 minute' WHERE shop_id=p_shop AND id=p_write; END IF;
     RETURN;
   END IF;
-  SELECT r.order_id,r.sheet_hash,r.sheet_hashes,r.sheet_key_version INTO v_order,v_hash,v_hashes,v_key_version FROM public.ledger_rows r WHERE r.shop_id=p_shop AND r.id=v_order;
+  SELECT r.order_id,r.sheet_hash,r.sheet_hashes,r.sheet_key_version,r.confirmed_target_key INTO v_order,v_hash,v_hashes,v_key_version,v_confirmed FROM public.ledger_rows r WHERE r.shop_id=p_shop AND r.id=v_order;
   SELECT pg_catalog.jsonb_build_array(o.order_no,coalesce(d.customer_name,''),coalesce(d.customer_phone,''),
       pg_catalog.to_char(o.pickup_at AT TIME ZONE s.time_zone,'YYYY-MM-DD HH24:MI'),
       pg_catalog.concat_ws(' · ',sz.name,fl.name,de.name,ds.name,d.design_notes),coalesce(d.lettering,''),o.amount,
@@ -2952,7 +3028,7 @@ BEGIN
   IF v_values IS NULL THEN
     IF EXISTS (SELECT 1 FROM public.orders o WHERE o.shop_id=p_shop AND o.id=v_order AND o.personal_data_purged_at IS NOT NULL) THEN
       IF v_audit THEN UPDATE public.ledger_writes SET audit_due_at=NULL,audit_deadline=NULL,write_uncertain=false,checkpoint_hashes=NULL WHERE shop_id=p_shop AND id=p_write;
-      ELSE UPDATE public.ledger_writes SET status='unlinked',next_attempt_at=NULL,write_uncertain=false,write_in_flight=false,checkpoint_hashes=NULL,resume_approved=false,resume_needs_audit=false WHERE shop_id=p_shop AND id=p_write; END IF;
+      ELSE UPDATE public.ledger_writes SET status='unlinked',next_attempt_at=NULL,write_uncertain=false,write_in_flight=false,checkpoint_hashes=NULL,resume_needs_audit=false WHERE shop_id=p_shop AND id=p_write; END IF;
     END IF;
     RETURN;
   END IF;
@@ -2967,7 +3043,7 @@ BEGIN
   IF v_audit THEN UPDATE public.ledger_writes SET audit_due_at=p_lease WHERE shop_id=p_shop AND id=p_write;
   ELSE UPDATE public.ledger_writes SET first_failed_at=CASE WHEN attempts>0 THEN coalesce(first_failed_at,next_attempt_at) ELSE first_failed_at END,
     attempts=least(attempts+1,32767),next_attempt_at=p_lease,write_in_flight=true WHERE shop_id=p_shop AND id=p_write; END IF;
-  RETURN QUERY SELECT v_link.id,v_link.spreadsheet_id,v_link.sheet_name,v_values,v_uncertain,v_audit,v_order,v_hash,v_hashes,v_checkpoint,v_resume,v_key_version;
+  RETURN QUERY SELECT v_link.id,v_link.spreadsheet_id,v_link.sheet_name,v_values,v_uncertain,v_audit,v_order,v_hash,v_hashes,v_checkpoint,v_key_version,v_confirmed;
 END
 $fn$;
 REVOKE ALL ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz) FROM PUBLIC;
@@ -2982,19 +3058,23 @@ BEGIN
   IF p_result='written' AND p_columns ? 'targetKey' AND (p_columns->>'targetKey') !~ '^[A-Za-z0-9_-]{43}$' THEN RETURN false; END IF;
   -- 예약 시각이 아니라 결과를 기록한 실제 시각부터 실패 간격을 센다.
   p_now:=pg_catalog.statement_timestamp();
-  SELECT l.id,l.failure_alerted_at INTO v_link,v_alerted FROM public.ledger_links l
-    WHERE l.shop_id=p_shop AND l.write_lease_id=p_write AND l.write_lease_until=p_lease AND l.status IN ('linked','auth_lost') FOR UPDATE;
-  IF NOT FOUND THEN RETURN false; END IF;
-  SELECT w.ledger_row_id,w.attempts,w.first_failed_at,(w.status='written'),w.audit_deadline,w.audit_checks INTO v_row,v_attempts,v_failed,v_audit,v_deadline,v_checks FROM public.ledger_writes w
-    WHERE w.shop_id=p_shop AND w.id=p_write AND ((w.next_attempt_at=p_lease AND w.status IN ('pending','retrying','alerted')) OR (w.audit_due_at=p_lease AND w.status='written')) FOR UPDATE;
+  -- 개인정보 삭제와 같은 순서: 주문 → 연결 → 쓰기 행.
+  SELECT w.ledger_row_id INTO v_row FROM public.ledger_writes w WHERE w.shop_id=p_shop AND w.id=p_write;
   IF NOT FOUND THEN RETURN false; END IF;
   SELECT r.order_id,o.personal_data_purged_at INTO v_order,v_purged FROM public.ledger_rows r
     JOIN public.orders o ON o.shop_id=r.shop_id AND o.id=r.order_id WHERE r.shop_id=p_shop AND r.id=v_row FOR SHARE OF o;
+  IF NOT FOUND THEN RETURN false; END IF;
+  SELECT l.id,l.failure_alerted_at INTO v_link,v_alerted FROM public.ledger_links l
+    WHERE l.shop_id=p_shop AND l.write_lease_id=p_write AND l.write_lease_until=p_lease AND l.status IN ('linked','auth_lost') FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
+  SELECT w.attempts,w.first_failed_at,(w.status='written'),w.audit_deadline,w.audit_checks INTO v_attempts,v_failed,v_audit,v_deadline,v_checks FROM public.ledger_writes w
+    WHERE w.shop_id=p_shop AND w.id=p_write AND w.ledger_row_id=v_row AND ((w.next_attempt_at=p_lease AND w.status IN ('pending','retrying','alerted')) OR (w.audit_due_at=p_lease AND w.status='written')) FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
   IF v_purged IS NOT NULL THEN
     IF v_audit THEN
       UPDATE public.ledger_writes SET audit_due_at=NULL,audit_deadline=NULL,write_uncertain=false,checkpoint_hashes=NULL WHERE shop_id=p_shop AND id=p_write;
     ELSE
-      UPDATE public.ledger_writes SET status='unlinked',next_attempt_at=NULL,write_uncertain=false,write_in_flight=false,checkpoint_hashes=NULL,resume_approved=false,resume_needs_audit=false WHERE shop_id=p_shop AND id=p_write;
+      UPDATE public.ledger_writes SET status='unlinked',next_attempt_at=NULL,write_uncertain=false,write_in_flight=false,checkpoint_hashes=NULL,resume_needs_audit=false WHERE shop_id=p_shop AND id=p_write;
     END IF;
     UPDATE public.ledger_links SET write_lease_id=NULL,write_lease_until=NULL WHERE shop_id=p_shop AND id=v_link;
     RETURN true;
@@ -3023,10 +3103,8 @@ BEGIN
   ELSIF p_result='written' THEN
     UPDATE public.ledger_writes SET status='written',written_at=p_now,next_attempt_at=NULL,last_error_kind=NULL,audit_repair_link_id=NULL,
       audit_due_at=CASE WHEN write_uncertain OR resume_needs_audit THEN p_now+interval '30 minutes' END,
-      audit_deadline=CASE WHEN write_uncertain OR resume_needs_audit THEN p_now+interval '24 hours' END,audit_checks=0,write_uncertain=write_uncertain OR resume_needs_audit,resume_needs_audit=false,resume_approved=false WHERE shop_id=p_shop AND id=p_write;
-    -- 확인은 이 주문의 첫 성공에만 적용하며 후속 이벤트는 새 서명으로 검증한다.
-    UPDATE public.ledger_writes SET resume_approved=false WHERE shop_id=p_shop AND ledger_row_id=v_row AND id<>p_write AND resume_approved;
-    UPDATE public.ledger_rows SET first_written_at=coalesce(first_written_at,p_now),last_written_at=p_now,sheet_hash=coalesce(p_columns->>'sheetHash',sheet_hash), sheet_key_version=coalesce(p_columns->>'keyVersion',sheet_key_version), sheet_hashes=CASE WHEN p_columns ? 'sheetHash' AND p_columns ? 'targetKey' THEN pg_catalog.jsonb_build_object(p_columns->>'targetKey',pg_catalog.jsonb_build_object(pg_catalog.replace(p_write::text,'-',''),p_columns->>'sheetHash')) ELSE sheet_hashes END WHERE shop_id=p_shop AND id=v_row;
+      audit_deadline=CASE WHEN write_uncertain OR resume_needs_audit THEN p_now+interval '24 hours' END,audit_checks=0,write_uncertain=write_uncertain OR resume_needs_audit,resume_needs_audit=false WHERE shop_id=p_shop AND id=p_write;
+    UPDATE public.ledger_rows SET confirmed_target_key=NULL,first_written_at=coalesce(first_written_at,p_now),last_written_at=p_now,sheet_hash=coalesce(p_columns->>'sheetHash',sheet_hash), sheet_key_version=coalesce(p_columns->>'keyVersion',sheet_key_version), sheet_hashes=CASE WHEN p_columns ? 'sheetHash' AND p_columns ? 'targetKey' THEN pg_catalog.jsonb_build_object(p_columns->>'targetKey',pg_catalog.jsonb_build_object(pg_catalog.replace(p_write::text,'-',''),p_columns->>'sheetHash')) ELSE sheet_hashes END WHERE shop_id=p_shop AND id=v_row;
     UPDATE public.owner_tasks SET closed_at=p_now WHERE shop_id=p_shop AND event_key='task:ledger_duplicate:'||v_order::text AND closed_at IS NULL;
     UPDATE public.owner_tasks SET closed_at=p_now WHERE shop_id=p_shop AND event_key='task:ledger_conflict:'||v_order::text AND closed_at IS NULL;
     UPDATE public.ledger_links SET status='linked',our_columns=coalesce(p_columns-ARRAY['sheetHash','targetKey','keyVersion'],our_columns) WHERE shop_id=p_shop AND id=v_link;
@@ -3050,7 +3128,7 @@ BEGIN
         VALUES(p_shop,'ledger_failing','alert:ledger_conflict:'||v_affected::text,v_task,p_now,p_now) ON CONFLICT(shop_id,event_key) DO NOTHING;
     END LOOP;
   ELSIF p_result='duplicate' THEN
-    UPDATE public.ledger_writes SET status='retrying',next_attempt_at=p_now+interval '5 minutes',last_error_kind='duplicate' WHERE shop_id=p_shop AND id=p_write;
+    UPDATE public.ledger_writes SET status='unlinked',next_attempt_at=NULL,resume_needs_audit=resume_needs_audit OR write_uncertain,write_uncertain=false,write_in_flight=false,checkpoint_hashes=NULL,last_error_kind='duplicate' WHERE shop_id=p_shop AND id=p_write;
     INSERT INTO public.owner_tasks(shop_id,kind,event_key,order_id,opened_at) VALUES(p_shop,'ledger_relink','task:ledger_duplicate:'||v_order::text,v_order,p_now)
       ON CONFLICT(shop_id,event_key) DO UPDATE SET closed_at=NULL RETURNING id INTO v_task;
     IF v_task IS NOT NULL THEN
@@ -3090,6 +3168,9 @@ BEGIN
     IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=role_name) THEN
       EXECUTE pg_catalog.format('REVOKE ALL ON TABLE siljang_ledger_private.ledger_call_slots FROM %I',role_name);
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.save_ledger_checkpoint(uuid,uuid,timestamptz,uuid,jsonb) FROM %I',role_name);
+      EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.prepare_ledger_confirmation(uuid,uuid,uuid) FROM %I',role_name);
+      EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.confirm_ledger_order(uuid,uuid,uuid,uuid,text,text,text,text) FROM %I',role_name);
+      EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.ledger_purged_orders(uuid,uuid,uuid,timestamptz,uuid[]) FROM %I',role_name);
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz) FROM %I',role_name);
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.guard_ledger_write(uuid,uuid,uuid,timestamptz,text,text) FROM %I',role_name);
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.finish_ledger_write(uuid,uuid,timestamptz,text,timestamptz,jsonb) FROM %I',role_name);
@@ -3128,12 +3209,12 @@ BEGIN
     UPDATE public.ledger_writes SET audit_due_at=NULL,audit_deadline=NULL,write_uncertain=false WHERE shop_id=p_shop AND status='written' AND audit_due_at IS NOT NULL;
     UPDATE public.ledger_writes w SET status='written',written_at=coalesce((SELECT r.last_written_at FROM public.ledger_rows r WHERE r.shop_id=p_shop AND r.id=w.ledger_row_id),pg_catalog.statement_timestamp()),next_attempt_at=NULL,write_uncertain=false,write_in_flight=false,audit_due_at=NULL,audit_deadline=NULL,audit_repair_link_id=NULL WHERE w.shop_id=p_shop AND w.status<>'written' AND EXISTS (SELECT 1 FROM public.ledger_links origin WHERE origin.shop_id=w.shop_id AND origin.id=w.audit_repair_link_id AND (origin.spreadsheet_id IS DISTINCT FROM p_spreadsheet OR origin.sheet_name IS DISTINCT FROM p_sheet));
   END IF;
-  -- 사장님이 충돌 안내에 따라 시트를 확인하고 다시 연결하면 중단된 주문을 재검증한다.
-  IF old_id IS NOT NULL THEN UPDATE public.owner_tasks SET closed_at=pg_catalog.statement_timestamp()
-    WHERE shop_id=p_shop AND event_key LIKE 'task:ledger_conflict:%' AND closed_at IS NULL; END IF;
-  UPDATE public.ledger_writes SET resume_approved=true,resume_needs_audit=resume_needs_audit OR write_uncertain,write_uncertain=false,write_in_flight=false,checkpoint_hashes=NULL WHERE shop_id=p_shop AND status='unlinked' AND last_error_kind='conflict';
-  UPDATE public.ledger_writes SET status='pending',next_attempt_at=greatest(pg_catalog.statement_timestamp(),coalesce(old_lease,pg_catalog.statement_timestamp()), CASE WHEN write_uncertain THEN coalesce(next_attempt_at,pg_catalog.statement_timestamp()) ELSE pg_catalog.statement_timestamp() END)
-    WHERE shop_id=p_shop AND status IN ('unlinked','alerted','retrying','pending');
+  -- 재인증은 확인이 아니다. 충돌·중복 주문은 사장님의 주문별 확인까지 보류한다.
+  UPDATE public.ledger_writes w SET status='pending',next_attempt_at=greatest(pg_catalog.statement_timestamp(),coalesce(old_lease,pg_catalog.statement_timestamp()), CASE WHEN write_uncertain THEN coalesce(next_attempt_at,pg_catalog.statement_timestamp()) ELSE pg_catalog.statement_timestamp() END)
+    WHERE w.shop_id=p_shop AND w.status IN ('unlinked','alerted','retrying','pending')
+      AND NOT EXISTS (SELECT 1 FROM public.ledger_rows r JOIN public.owner_tasks t ON t.shop_id=r.shop_id AND t.order_id=r.order_id
+        WHERE r.shop_id=p_shop AND r.id=w.ledger_row_id AND t.closed_at IS NULL
+          AND t.event_key IN ('task:ledger_conflict:'||r.order_id::text,'task:ledger_duplicate:'||r.order_id::text));
   RETURN QUERY SELECT CASE WHEN old_id IS NULL THEN 'created' ELSE 'relinked' END;
 END
 $fn$;
@@ -3183,7 +3264,7 @@ CREATE FUNCTION public.purge_ledger_signatures() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
 BEGIN
   IF OLD.personal_data_purged_at IS NULL AND NEW.personal_data_purged_at IS NOT NULL THEN
-    UPDATE public.ledger_rows SET sheet_hash=NULL,sheet_hashes='{}'::jsonb,sheet_key_version=NULL
+    UPDATE public.ledger_rows SET sheet_hash=NULL,sheet_hashes='{}'::jsonb,sheet_key_version=NULL,confirmed_target_key=NULL
       WHERE shop_id=NEW.shop_id AND order_id=NEW.id;
     UPDATE public.ledger_writes SET checkpoint_hashes=NULL WHERE shop_id=NEW.shop_id AND checkpoint_hashes IS NOT NULL;
   END IF;
@@ -3817,6 +3898,7 @@ COMMENT ON COLUMN ledger_links.write_lease_until IS '파일 선점 만료 시각
 COMMENT ON COLUMN ledger_rows.id IS '장부 행 ID';
 COMMENT ON COLUMN ledger_rows.shop_id IS '가게';
 COMMENT ON COLUMN ledger_rows.order_id IS '주문. 재제작 주문의 행은 두지 않고 그 이벤트를 원래 주문 행에 적음(트리거 ledger_rows_remake, R21, SPEC-064)';
+COMMENT ON COLUMN ledger_rows.confirmed_target_key IS '사장님이 확인한 장부 대상의 서명';
 COMMENT ON COLUMN ledger_rows.sheet_key_version IS '장부 서명의 HMAC 키 버전';
 COMMENT ON COLUMN ledger_rows.sheet_hash IS '마지막 장부 행의 앱 서명';
 COMMENT ON COLUMN ledger_rows.sheet_hashes IS '대상과 기록 ID별 장부 행의 앱 서명';
@@ -3835,7 +3917,6 @@ COMMENT ON COLUMN ledger_writes.last_error_kind IS '마지막 실패 종류(내�
 COMMENT ON COLUMN ledger_writes.written_at IS '적힌 시각. 적을 때는 그 주문의 지금 값으로(옛 값이 새 값을 덮지 않음)';
 COMMENT ON COLUMN ledger_writes.created_at IS '남긴 시각';
 COMMENT ON COLUMN ledger_writes.write_uncertain IS '외부 쓰기 결과 불확실 여부';
-COMMENT ON COLUMN ledger_writes.resume_approved IS '확인 후 재개 허용';
 COMMENT ON COLUMN ledger_writes.resume_needs_audit IS '재개 뒤 중복 확인 필요';
 COMMENT ON COLUMN ledger_writes.write_in_flight IS '결과 기록 전 외부 쓰기 시도';
 COMMENT ON COLUMN ledger_writes.audit_due_at IS '중복 정리 다음 확인 시각';

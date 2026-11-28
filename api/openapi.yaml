@@ -11,7 +11,7 @@ info:
     수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~079)에서 만들었다.
     이 파일은 research/cake-api-2026-11/build_api.py가 만든다. 손으로 고치지 않는다.
 
-    **API와 응답의 ID.** API마다 `x-corthex.id`(API-001~083)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
+    **API와 응답의 ID.** API마다 `x-corthex.id`(API-001~084)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
     `x-corthex.omit`은 응답 목록(2xx·422·401·403·404·409·default) 가운데 그 API가 반환하지 않는 것과 사유, `x-corthex.kinds`는 케이스 유형마다 그 경우를 보여 주는 응답·예시다.
 
     **오류 형식.** 모든 오류는 RFC 9457 Problem Details(`application/problem+json`)에 `code`와 `traceId`를 더한 형식. 코드는 `components.x-corthex.errors`에만 있다.
@@ -7066,7 +7066,7 @@ paths:
       operationId: linkLedger
       summary: 장부 연결·다시 연결
       description: |-
-        구글 인가 코드와 고른 시트·탭으로 장부를 연결하고 우리 열 헤더를 만든다. 같은 이름의 사장님 열이 있으면 오른쪽 빈 열에 만들고 movedRight(REQ-127). 다시 연결하면 '연결 끊김'으로 남은 주문들의 행을 지금 값으로 다시 적는다. 구글 Picker에서 앱에 공유할 파일을 고른다. 구글 권한이 거부되거나 시트를 열 수 없으면 연결하지 않는다. 연결 결과가 불확실하면 같은 인가 코드를 재전송하지 않고 현재 상태를 조회한 뒤 필요하면 구글 권한 요청부터 다시 시작한다.
+        구글 인가 코드와 고른 시트·탭으로 장부를 연결하고 우리 열 헤더를 만든다. 같은 이름의 사장님 열이 있으면 오른쪽 빈 열에 만들고 movedRight(REQ-127). 다시 연결하면 일반 대기 주문은 다시 적되 충돌·중복 주문은 사장님이 주문별로 확인할 때까지 보류한다. 구글 Picker에서 앱에 공유할 파일을 고른다. 구글 권한이 거부되거나 시트를 열 수 없으면 연결하지 않는다. 연결 결과가 불확실하면 같은 인가 코드를 재전송하지 않고 현재 상태를 조회한 뒤 필요하면 구글 권한 요청부터 다시 시작한다.
 
         SPEC: SPEC-009, SPEC-064
       tags:
@@ -24666,6 +24666,200 @@ paths:
           - note:신고한 사람에게는 주문 내용·금액·주문자를 보이지 않고 보상 안내도 보내지 않음(REQ-252, DEC-24)
           화면:
           - screen
+  /owner/tasks/{taskId}/ledger-confirmation:
+    post:
+      operationId: confirmLedgerOrder
+      summary: 장부 주문 확인 뒤 재개
+      description: |-
+        사장님이 시트의 해당 주문을 확인한 뒤 누른다. 현재 연결과 주문·행을 읽어 서명만 보관하고 그 주문의 할 일을 닫아 쓰기를 재개한다. 중복이나 구조 변경이 남았으면 409로 보류하며, 확인 후 행이나 대상이 바뀌면 쓰지 않고 다시 알린다. 시트 원문과 구글 토큰은 응답하지 않는다.
+
+        SPEC: SPEC-064, SPEC-067
+      tags:
+      - 장부
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        example: a9e3cdce-9227-5efd-ab0a-d8a4c5cc2a6b
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description: 장부 확인 할 일 ID(uuid). 없거나 다른 가게 것이거나 형식이 틀리면 404(DEC-02)
+      - $ref: '#/components/parameters/IdempotencyKey'
+      security:
+      - ownerSession: []
+      responses:
+        "200":
+          description: '성공. 예시: confirmed'
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerConfirmationResult'
+              examples:
+                confirmed:
+                  value:
+                    outcome: confirmed
+        "401":
+          description: |-
+            로그인이나 스킬 키가 없거나 맞지 않음
+
+            - `unauthenticated`: 로그인(세션 쿠키)이 없거나 만료됨
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                unauthenticated:
+                  value:
+                    type: /problems/unauthenticated
+                    title: 다시 로그인해 주세요
+                    status: 401
+                    detail: 로그인(세션 쿠키)이 없거나 만료됨
+                    instance: /owner/tasks/a9e3cdce-9227-5efd-ab0a-d8a4c5cc2a6b/ledger-confirmation
+                    code: unauthenticated
+                    traceId: c2ad63a2f6cebd467736f614d5da7832
+        "404":
+          description: |-
+            찾을 수 없음(DEC-02)
+
+            - `not_found`: 경로의 기록이 없거나, 다른 가게 것이거나, ID 형식이 틀림. 셋을 구분하지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                not_found:
+                  value:
+                    type: /problems/not_found
+                    title: 찾을 수 없어요
+                    status: 404
+                    detail: 경로의 기록이 없거나, 다른 가게 것이거나, ID 형식이 틀림
+                    instance: /owner/tasks/a9e3cdce-9227-5efd-ab0a-d8a4c5cc2a6b/ledger-confirmation
+                    code: not_found
+                    traceId: f25318067764c444bc3d95e3b8633ceb
+        "409":
+          description: |-
+            지금 상태와 충돌해 아무것도 바꾸지 않음
+
+            - `version_conflict`: 화면이 본 뒤에 그 기록이 바뀜(baseRevision이 지금과 다름). 아무것도 바꾸지 않음
+            - `request_in_progress`: 같은 요청 키의 첫 요청을 아직 처리하는 중(받은 뒤 60초가 지나도 끝나지 않으면 다음 요청이 이어받음, DEC-04)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                version_conflict:
+                  value:
+                    type: /problems/version_conflict
+                    title: 그 사이 바뀌었어요. 지금 상태를 확인해 주세요
+                    status: 409
+                    detail: 화면이 본 뒤에 그 기록이 바뀜(baseRevision이 지금과 다름)
+                    instance: /owner/tasks/a9e3cdce-9227-5efd-ab0a-d8a4c5cc2a6b/ledger-confirmation
+                    code: version_conflict
+                    traceId: 320a7b719b436417aee163b6d043f448
+                request_in_progress:
+                  value:
+                    type: /problems/request_in_progress
+                    title: 처리하고 있어요. 잠시 뒤 다시 확인해 주세요
+                    status: 409
+                    detail: 같은 요청 키의 첫 요청을 아직 처리하는 중(받은 뒤 60초가 지나도 끝나지 않으면 다음 요청이 이어받음, DEC-04)
+                    instance: /owner/tasks/a9e3cdce-9227-5efd-ab0a-d8a4c5cc2a6b/ledger-confirmation
+                    code: request_in_progress
+                    traceId: 19c43c0edbb843967f6205e538b4cbb5
+        "422":
+          description: |-
+            입력이 계약에 맞지 않아 아무것도 바꾸지 않음(DEC-01)
+
+            - `validation_failed`: 입력 필드가 계약의 한도나 형식에 맞지 않음. 필드마다 errors에 위치와 사유 코드
+            - `idempotency_key_reused`: 같은 요청 키로 다른 명령이나 다른 내용을 보냄(서버가 요청 지문으로 가림, DEC-04)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validation_failed:
+                  value:
+                    type: /problems/validation_failed
+                    title: 입력한 내용을 확인해 주세요
+                    status: 422
+                    detail: 입력 필드가 계약의 한도나 형식에 맞지 않음
+                    instance: /owner/tasks/a9e3cdce-9227-5efd-ab0a-d8a4c5cc2a6b/ledger-confirmation
+                    code: validation_failed
+                    traceId: fce09d8becc478bf4a0ecc48958685f1
+                    errors:
+                    - field: header:Idempotency-Key
+                      code: required
+                idempotency_key_reused:
+                  value:
+                    type: /problems/idempotency_key_reused
+                    title: 다시 시도해 주세요
+                    status: 422
+                    detail: 같은 요청 키로 다른 명령이나 다른 내용을 보냄(서버가 요청 지문으로 가림, DEC-04)
+                    instance: /owner/tasks/a9e3cdce-9227-5efd-ab0a-d8a4c5cc2a6b/ledger-confirmation
+                    code: idempotency_key_reused
+                    traceId: 0756bd07e0cbe946945f3fe3242f9b41
+        "503":
+          description: |-
+            외부 서비스가 답하지 않아 아무것도 바꾸지 않음
+
+            - `google_unavailable`: 장부 연결 결과를 확인하지 못함. 연결 기록은 저장되지 않았으나 시트 열은 생성됐을 수 있음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                google_unavailable:
+                  value:
+                    type: /problems/google_unavailable
+                    title: 현재 연결 상태를 확인하고 구글 권한부터 다시 연결해 주세요
+                    status: 503
+                    detail: 장부 연결 결과를 확인하지 못함
+                    instance: /owner/tasks/a9e3cdce-9227-5efd-ab0a-d8a4c5cc2a6b/ledger-confirmation
+                    code: google_unavailable
+                    traceId: c0e3cd47a9589a9947175447d8e18e9e
+        default:
+          description: 예상하지 못한 서버 오류(500). 내용은 로그에만
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                internal:
+                  value:
+                    type: /problems/internal
+                    title: 문제가 생겼어요. 다시 시도해 주세요
+                    status: 500
+                    detail: 예상하지 못한 서버 오류
+                    instance: /owner/tasks/a9e3cdce-9227-5efd-ab0a-d8a4c5cc2a6b/ledger-confirmation
+                    code: internal
+                    traceId: f8a3df9d9fe2288e80373c187fb94f84
+      x-corthex:
+        id: API-084
+        spec:
+        - SPEC-064
+        - SPEC-067
+        omit:
+          "403": 역할마다 세션 쿠키와 경로가 나뉘고(DEC-10, DEC-11), 다른 가게 기록은 404로 숨김(DEC-02)
+        kinds:
+          접근:
+          - security
+          - 401:unauthenticated
+          대상:
+          - 404:not_found
+          반복:
+          - idem
+          동시:
+          - 409:version_conflict
+          외부:
+          - 503:google_unavailable
+          노출:
+          - closed
+          화면:
+          - screen
 components:
   schemas:
     Problem:
@@ -28081,6 +28275,16 @@ components:
           description: 'done: 바꿈, unchanged: 이미 그 상태라 아무것도 바꾸지 않음(DEC-03)'
         ledger:
           $ref: '#/components/schemas/LedgerLink'
+      additionalProperties: false
+    LedgerConfirmationResult:
+      type: object
+      required:
+      - outcome
+      properties:
+        outcome:
+          type: string
+          enum:
+          - confirmed
       additionalProperties: false
     LedgerUnlinkResult:
       type: object
@@ -33644,6 +33848,7 @@ components:
         - API-034
         - API-035
         - API-036
+        - API-084
         - API-040
         - API-042
         - API-083
@@ -33696,6 +33901,7 @@ components:
         - API-079
         - API-035
         - API-036
+        - API-084
         - API-042
         - API-083
         - API-046
@@ -33784,6 +33990,7 @@ components:
         - API-034
         - API-035
         - API-036
+        - API-084
         - API-037
         - API-040
         - API-041
@@ -33859,6 +34066,7 @@ components:
         - API-077
         - API-019
         - API-023
+        - API-084
         - API-038
         - API-039
         - API-041
@@ -33968,6 +34176,7 @@ components:
         - API-031
         - API-079
         - API-035
+        - API-084
         - API-042
         - API-083
         - API-046
@@ -34163,6 +34372,7 @@ components:
         - API-079
         - API-035
         - API-036
+        - API-084
         - API-042
         - API-083
         - API-046
@@ -34260,6 +34470,7 @@ components:
         - API-034
         - API-035
         - API-036
+        - API-084
         - API-037
         - API-038
         - API-039
@@ -34314,6 +34525,7 @@ components:
         spec: SPEC-009
         operations:
         - API-035
+        - API-084
       storage_unavailable:
         status: 503
         meaning: 사진 저장소에 쓰지 못함. 등록·저장 전체를 남기지 않음

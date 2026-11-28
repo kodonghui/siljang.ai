@@ -23,6 +23,7 @@ function parseLedger(value: unknown): Ledger | null {
   if (
     !["linked", "auth_lost", "unlinked"].includes(String(v.status)) ||
     typeof v.spreadsheetId !== "string" ||
+    !/^[A-Za-z0-9_-]{20,100}$/.test(v.spreadsheetId) ||
     typeof v.sheetName !== "string" ||
     typeof v.revision !== "string" ||
     !Number.isSafeInteger(v.unwrittenCount) ||
@@ -245,6 +246,13 @@ export function LedgerScreen(props: ShopLicenseProps & { readonly shopId: string
           <>
             <p>{ledger.status === "linked" ? "연결됨" : "다시 연결해 주세요"}</p>
             <p>{ledger.sheetName}</p>
+            <a
+              href={`https://docs.google.com/spreadsheets/d/${ledger.spreadsheetId}/edit`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              구글 시트 열기
+            </a>
             <p>못 적은 주문 {ledger.unwrittenCount}건</p>
             <ul>
               {ledger.columns.map((column) => (

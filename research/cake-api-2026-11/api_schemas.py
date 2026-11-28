@@ -757,6 +757,7 @@ S["LedgerLink"] = all_required({
     "revision": REVISION,
 })
 S["LedgerResult"] = all_required({"outcome": outcome(("created", "relinked", "unchanged")), "ledger": ref("LedgerLink")})
+S["LedgerConfirmationResult"] = all_required({"outcome": enum(["confirmed"])})
 S["LedgerUnlinkResult"] = all_required({"outcome": outcome(), "ledger": ref("LedgerLink"), "keptWrites": integer(0, 100000, desc="'연결 끊김'으로 남긴 쓰기 수. 다시 연결하면 지금 값으로 적음")})
 
 # ── 예약 링크와 공개 페이지 ────────────────────────────────────────────────

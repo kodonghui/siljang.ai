@@ -26,8 +26,8 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
         expected_hash: string | null;
         expected_hashes: Record<string, Record<string, string>>;
         checkpoint_hashes: LedgerCheckpoint | null;
-        resume_approved: boolean;
         sheet_key_version: string | null;
+        confirmed_target_key: string | null;
       }>("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [item.id, ctx.leaseUntil]);
       const row = result.rows[0];
       if (!row) return null;
@@ -43,8 +43,8 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
       return {
         leaseUntil: ctx.leaseUntil,
         checkpoint: row.checkpoint_hashes,
-        resumeApproved: row.resume_approved,
         signatureVersion: row.sheet_key_version,
+        confirmedTarget: row.confirmed_target_key,
         expectedDigests: row.expected_hashes?.[targetKey] ?? {},
         shopId: db.scope.shopId,
         eventId: item.id,
@@ -75,9 +75,10 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
       if (key === null) throw new Error("ledger key is not configured");
       const keyVersion = await ledgerRowDigest(key, ["ledger-key-version-v1"]);
       if (
-        !row.resumeApproved &&
-        ((row.expectedDigest && row.signatureVersion !== keyVersion) ||
-          (row.checkpoint && row.checkpoint.keyVersion !== keyVersion))
+        ((row.expectedDigest || row.confirmedTarget) && row.signatureVersion !== keyVersion) ||
+        (row.checkpoint && row.checkpoint.keyVersion !== keyVersion) ||
+        (row.confirmedTarget &&
+          row.confirmedTarget !== (await ledgerRowDigest(key, ["ledger-target", row.file, row.tab])))
       )
         return row.auditing
           ? { status: "audit_retry" }
@@ -101,9 +102,24 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
         uncertain: row.uncertain,
         hashKey: key,
         expectedDigest: row.expectedDigest ?? null,
-        resumeApproved: row.resumeApproved ?? false,
+        confirmedExisting: Boolean(row.confirmedTarget && row.expectedDigest),
         expectedDigests: row.expectedDigests ?? {},
         checkpoint: row.checkpoint ?? null,
+        purgedOrders: async (ids: readonly string[]) => {
+          if (!row.leaseUntil) throw new Error("ledger lease is not available");
+          guard.signal.throwIfAborted();
+          const lookup = connect(settings.secrets.DATABASE_URL);
+          try {
+            const found = await lookup.query<{ id: string }>(
+              "SELECT siljang_ledger_private.ledger_purged_orders($1,$2,$3,$4,$5::uuid[]) AS id",
+              [row.shopId, row.linkId, row.eventId, row.leaseUntil, ids],
+            );
+            guard.signal.throwIfAborted();
+            return new Set(found.rows.map((entry) => entry.id));
+          } finally {
+            await lookup.close();
+          }
+        },
         saveCheckpoint: async (checkpoint: import("./ledger-sheet-write").LedgerCheckpoint) => {
           if (!row.leaseUntil) throw new Error("ledger lease is not available");
           guard.signal.throwIfAborted();

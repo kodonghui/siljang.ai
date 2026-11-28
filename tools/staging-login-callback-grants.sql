@@ -266,3 +266,7 @@ GRANT EXECUTE ON FUNCTION siljang_ledger_private.count_unwritten_orders(uuid) TO
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.guard_ledger_write(uuid,uuid,uuid,timestamptz,text,text) TO :"runtime_role";
 
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.save_ledger_checkpoint(uuid,uuid,timestamptz,uuid,jsonb) TO :"runtime_role";
+
+-- TASK-157: 같은 가게에서 이미 삭제된 주문만 사후 비교에서 제외한다.
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.ledger_purged_orders(uuid,uuid,uuid,timestamptz,uuid[]) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.prepare_ledger_confirmation(uuid,uuid,uuid),siljang_ledger_private.confirm_ledger_order(uuid,uuid,uuid,uuid,text,text,text,text) TO :"runtime_role";

@@ -69,7 +69,7 @@ function describeAlert(alert: OwnerAlert): AlertCard {
     case "ledger_failing":
       if (alert.conflictOrderNo !== undefined)
         return taskCard(
-          `장부가 변경되었거나 5,000행을 넘어 주문 ${alert.conflictOrderNo}의 기록을 멈췄어요. 시트를 확인하고 다시 연결해 주세요`,
+          `장부가 변경되었거나 5,000행을 넘어 주문 ${alert.conflictOrderNo}의 기록을 멈췄어요. 시트에서 확인한 뒤 확인했어요를 눌러 주세요`,
         );
       if (alert.duplicateOrderNo !== undefined)
         return taskCard(`장부에 같은 주문(주문번호 ${alert.duplicateOrderNo})이 두 줄 있어요. 하나를 지워 주세요`);

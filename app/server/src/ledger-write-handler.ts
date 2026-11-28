@@ -4,8 +4,8 @@ import type { Secret } from "./settings";
 import type { ShopDb } from "./shop-scope";
 
 export interface LedgerWriteSnapshot {
-  readonly resumeApproved?: boolean;
   readonly signatureVersion?: string | null;
+  readonly confirmedTarget?: string | null;
   readonly shopId: string;
   readonly eventId: string;
   readonly orderId: string;

@@ -32,7 +32,7 @@ export function ledgerDuplicateSummary(eventKey: string, orderNo: string | null)
   if (eventKey.startsWith("task:ledger_conflict:")) {
     const id = eventKey.slice("task:ledger_conflict:".length);
     if (isUuid(id) && orderNo !== null && /^[0-9A-Z]{6,8}$/.test(orderNo))
-      return `장부가 변경되었거나 5,000행을 넘어 주문 ${orderNo}의 기록을 멈췄어요. 시트를 확인하고 다시 연결해 주세요`;
+      return `장부가 변경되었거나 5,000행을 넘어 주문 ${orderNo}의 기록을 멈췄어요. 시트에서 확인한 뒤 확인했어요를 눌러 주세요`;
   }
   const id = eventKey.startsWith("task:ledger_duplicate:") ? eventKey.slice("task:ledger_duplicate:".length) : "";
   if (!isUuid(id) || orderNo === null || !/^[0-9A-Z]{6,8}$/.test(orderNo)) return null;

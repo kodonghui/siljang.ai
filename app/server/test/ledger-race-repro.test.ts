@@ -627,3 +627,57 @@ it("읽을 수 없는 비교 기준이라도 이미 남긴 피해 주문은 알�
     ),
   ).rejects.toMatchObject({ name: "LedgerConflictError", affectedOrderIds: [otherId] });
 });
+it("사장님 확인 뒤 행이 바뀌면 재개 승인 여부와 무관하게 덮어쓰지 않는다", async () => {
+  const original = prior("ABC123", orderId),
+    edited = [...original];
+  edited[1] = "확인 뒤 다시 수정";
+  let writes = 0;
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      writes++;
+      return Response.json({ spreadsheetId: file, replies: [{}] });
+    }
+    return Response.json({
+      values: decodeURIComponent(String(raw)).includes("!A2:N2") ? [edited] : [["header"], edited],
+    });
+  };
+  await expect(
+    writeLedgerSheet({ ...input, expectedDigest: await ledgerRowDigest(input.hashKey, original) }, { fetch: send }),
+  ).rejects.toMatchObject({ name: "LedgerConflictError" });
+  expect(writes).toBe(0);
+});
+it("사장님 확인에서는 딱 한 행을 읽고 시트를 쓰지 않으며 주문 ID·기록 ID를 확인한다", async () => {
+  const row = prior("ABC123", orderId);
+  row[12] = crypto.randomUUID().replaceAll("-", "");
+  let saved: readonly (string | number | boolean | { readonly formula: string })[] | null = null,
+    writes = 0;
+  const send = async (_raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "POST") writes++;
+    return Response.json({ values: [["header"], row] });
+  };
+  await writeLedgerSheet(
+    {
+      ...input,
+      confirmRow: async (r) => {
+        saved = r;
+      },
+    },
+    { fetch: send },
+  );
+  expect(saved).toEqual(row);
+  expect(writes).toBe(0);
+});
+it("확인 뒤 행이 사라지면 자동으로 새 행을 추가하지 않는다", async () => {
+  let writes = 0;
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      writes++;
+      return Response.json({ spreadsheetId: file, replies: [{}] });
+    }
+    return Response.json({ values: decodeURIComponent(String(raw)).includes("!A5000:N") ? [] : [["header"]] });
+  };
+  await expect(writeLedgerSheet({ ...input, confirmedExisting: true }, { fetch: send })).rejects.toMatchObject({
+    name: "LedgerConflictError",
+  });
+  expect(writes).toBe(0);
+});

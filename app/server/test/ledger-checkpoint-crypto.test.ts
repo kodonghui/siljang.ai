@@ -67,3 +67,13 @@ it("주문 ID 없는 옛 시트 행은 삭제된 주문일 수 있어 서명을 
   expect(checkpoint).toHaveProperty("unidentifiedRows", true);
   expect((await compareLedgerCheckpoint(key, context, checkpoint, [old])).changed).toBe(true);
 });
+it("이미 지운 주문의 시트 행은 저장과 재조회 양쪽에서 제외해 정상 확인한다", async () => {
+  const key = new Secret("synthetic-hmac-key"),
+    id = crypto.randomUUID(),
+    target = crypto.randomUUID();
+  const context = { file: "synthetic_sheet_1234567890", tab: "장부", eventId: crypto.randomUUID(), orderId: target };
+  const removed = ["OLD123", "합성 이름", "", "", "", "", 0, "", "", 0, "", "", "old", id.replaceAll("-", "")];
+  const checkpoint = await buildLedgerCheckpoint(key, context, [], []);
+  const result = await compareLedgerCheckpoint(key, context, checkpoint, [removed], false, new Set([id]));
+  expect(result.changed).toBe(false);
+});

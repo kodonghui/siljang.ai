@@ -194,11 +194,11 @@ it.skipIf(!TEST_DATABASE_URL)("다른 주문의 행 충돌은 해당 주문에 �
           `task:ledger_conflict:${other}`,
         ])
       ).rowCount,
-    ).toBe(0);
+    ).toBe(1);
     expect(
       (await isolated.db.query<{ status: string }>("SELECT status FROM ledger_writes WHERE id=$1", [otherWrite]))
         .rows[0]?.status,
-    ).toBe("pending");
+    ).toBe("unlinked");
   } finally {
     await isolated.close();
   }

@@ -124,6 +124,7 @@ export async function compareLedgerCheckpoint(
   checkpoint: unknown,
   current: readonly (readonly LedgerCell[])[],
   excludeTarget = false,
+  ignoredOrderIds: ReadonlySet<string> = new Set(),
 ): Promise<{ changed: boolean; affectedOrderIds: string[]; rows: LedgerCheckpointRow[] }> {
   if (!valid(checkpoint)) throw new Error("invalid ledger checkpoint");
   const sign = await signer(secret);
@@ -139,7 +140,11 @@ export async function compareLedgerCheckpoint(
     ["after", rows],
   ] as const)
     for (const row of list) {
-      if (excludeTarget && row.orderId === context.orderId.toLowerCase()) continue;
+      if (
+        (excludeTarget && row.orderId === context.orderId.toLowerCase()) ||
+        (row.orderId && ignoredOrderIds.has(row.orderId))
+      )
+        continue;
       const group = groups.get(row.key) ?? { before: [], after: [] };
       group[side].push(row);
       groups.set(row.key, group);
