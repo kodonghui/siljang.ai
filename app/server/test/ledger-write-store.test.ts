@@ -195,7 +195,8 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         [write],
       )
     ).rows[0];
+    if (!result) throw new Error("ledger write missing");
     expect(result?.status).toBe("retrying");
-    expect(result?.next_attempt_at.getTime()).toBe(result?.first_failed_at.getTime() + 24 * 3600000);
+    expect(result.next_attempt_at.getTime()).toBe(result.first_failed_at.getTime() + 24 * 3600000);
   });
 });
