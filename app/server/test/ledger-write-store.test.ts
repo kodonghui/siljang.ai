@@ -822,6 +822,16 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         ],
       );
       expect(confirmed.rows[0]?.ok).toBe(true);
+      // DB 시각은 마이크로초, 작업 시각은 밀리초이므로 다음 작업 시각이 지난 뒤 실행한다.
+      await isolated.db.query("SELECT pg_sleep(0.01)");
+      expect(
+        (
+          await isolated.db.query<{ ready: boolean }>(
+            "SELECT next_attempt_at <= statement_timestamp() AS ready FROM ledger_writes WHERE id=$1",
+            [write],
+          )
+        ).rows[0]?.ready,
+      ).toBe(true);
       await runDueJobs({
         db,
         now: new Date(),
