@@ -1,0 +1,152 @@
+.operator-records {
+  display: grid;
+  gap: var(--space-md);
+  overflow-wrap: break-word;
+  word-break: keep-all;
+}
+.operator-records button {
+  min-height: var(--size-target);
+  border: var(--border-width-hairline) solid var(--color-line-control);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+}
+.operator-records button[aria-pressed="true"] {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-pressed);
+  font-weight: var(--font-weight-semibold);
+}
+.operator-records a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-target);
+}
+.operator-records-tabs {
+  display: flex;
+  gap: var(--space-sm);
+}
+.operator-records-columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl);
+}
+.operator-records-columns:not(.has-selection) > div:nth-child(2),
+.operator-records-columns.has-selection > div:first-child {
+  display: none;
+}
+.operator-records-back {
+  display: inline-block;
+}
+.operator-records-columns > div {
+  min-width: 0;
+  background: var(--color-surface);
+  border: var(--border-width-hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+.operator-records-columns h2 {
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-size-title);
+}
+.operator-records-columns li {
+  margin-block: var(--space-sm);
+}
+.operator-records-columns ul {
+  padding-left: var(--space-xl);
+}
+.operator-records-columns > div:first-child > ul {
+  list-style: none;
+  padding: 0;
+}
+.operator-records-columns :where(div:first-child > ul button) {
+  text-align: left;
+  width: 100%;
+}
+.operator-records :where(dl > div) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+.operator-records dd {
+  margin: 0;
+}
+dialog.operator-records-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+dialog.operator-records-dialog::backdrop {
+  background: var(--color-scrim);
+}
+.operator-records-dialog > div {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: auto;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  padding: var(--space-xl);
+}
+.operator-records-dialog textarea {
+  display: block;
+  width: 100%;
+  min-height: calc(2 * var(--size-control-lg));
+  border: var(--border-width-hairline) solid var(--color-line-control);
+  padding: var(--space-sm);
+}
+.operator-records-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: auto;
+  padding-block: var(--space-md);
+  background: var(--color-surface);
+}
+.operator-records-actions button {
+  flex: 1;
+  min-height: var(--size-control-lg);
+}
+.operator-records-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+@media (min-width: 1260px) {
+  .operator-records-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .operator-records-columns:not(.has-selection) > div:nth-child(2),
+  .operator-records-columns.has-selection > div:first-child {
+    display: block;
+  }
+  .operator-records-back {
+    display: none;
+  }
+  .operator-records-dialog > div {
+    width: min(100%, calc(var(--size-aside) + var(--size-photo)));
+    height: auto;
+  }
+  .operator-records-actions {
+    position: static;
+    margin-top: var(--space-lg);
+    padding-block: 0;
+  }
+}

@@ -1,0 +1,807 @@
+{
+  "KeptRecord": {
+    "additionalProperties": false,
+    "description": "보관 기록(REQ-187, 05단계 A22): 주문자 이름·끝난 날·보관 기간과 계약·결제 기록. 운영자가 사유를 적어 열 때만(SPEC-073)",
+    "properties": {
+      "contractKeepUntil": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "customerName": {
+        "description": "주문자 이름(재제작 주문은 null)",
+        "maxLength": 30,
+        "minLength": 1,
+        "type": ["string", "null"]
+      },
+      "details": {
+        "description": "주문 내용 버전(계약 기록). 연락처·알레르기 답·문구·디자인 설명은 지워져 없음",
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "amount": {
+              "description": "원",
+              "maximum": 10000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "createdAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "pickupAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "summary": {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": ["version", "createdAt", "pickupAt", "amount", "summary"],
+          "type": "object"
+        },
+        "maxItems": 50,
+        "minItems": 1,
+        "type": "array"
+      },
+      "finishedAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "issueKeepUntil": {
+        "format": "date-time",
+        "type": ["string", "null"]
+      },
+      "issuePurgedAt": {
+        "format": "date-time",
+        "type": ["string", "null"]
+      },
+      "keptRecordId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "orderNo": {
+        "description": "주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)",
+        "maxLength": 8,
+        "minLength": 6,
+        "pattern": "^[0-9A-Z]{6,8}$",
+        "type": "string"
+      },
+      "payments": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "amount": {
+              "maximum": 10000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "issuedAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "kind": {
+              "enum": ["first", "reissue", "difference"],
+              "type": "string"
+            },
+            "paidAt": {
+              "format": "date-time",
+              "type": ["string", "null"]
+            },
+            "status": {
+              "enum": ["open", "claimed", "mismatch", "paid", "expired", "closed"],
+              "type": "string"
+            }
+          },
+          "required": ["kind", "status", "amount", "issuedAt", "paidAt"],
+          "type": "object"
+        },
+        "maxItems": 20,
+        "minItems": 0,
+        "type": "array"
+      },
+      "refunds": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "amount": {
+              "maximum": 100000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "cause": {
+              "enum": [
+                "customer_cancel",
+                "shop_cancel",
+                "change_reduced",
+                "compensation",
+                "paid_after_cancel",
+                "over_received"
+              ],
+              "type": "string"
+            },
+            "decidedAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "decision": {
+              "enum": ["full", "partial", "none"],
+              "type": "string"
+            },
+            "sentAt": {
+              "format": "date-time",
+              "type": ["string", "null"]
+            }
+          },
+          "required": ["cause", "decision", "amount", "decidedAt", "sentAt"],
+          "type": "object"
+        },
+        "maxItems": 20,
+        "minItems": 0,
+        "type": "array"
+      }
+    },
+    "required": [
+      "keptRecordId",
+      "orderNo",
+      "customerName",
+      "finishedAt",
+      "contractKeepUntil",
+      "issueKeepUntil",
+      "issuePurgedAt",
+      "details",
+      "payments",
+      "refunds"
+    ],
+    "type": "object"
+  },
+  "OperatorConsultation": {
+    "additionalProperties": false,
+    "description": "운영자가 보는 상담 하나(가린 값, SPEC-073). 메시지마다 발신자·시각·종류·글자 수·사진 수만 있고 대화 글은 없음(REQ-227). 지운 상담은 status deleted와 빈 목록",
+    "properties": {
+      "consultationId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/OperatorMessage"
+        },
+        "maxItems": 100,
+        "minItems": 0,
+        "type": "array"
+      },
+      "maskedValues": {
+        "description": "대화 속 플레이스홀더마다 끝 4자리와 열 수 있는지",
+        "items": {
+          "$ref": "#/components/schemas/OperatorMaskedValue"
+        },
+        "maxItems": 200,
+        "minItems": 0,
+        "type": "array"
+      },
+      "nextCursor": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9_-]+$",
+        "type": ["string", "null"]
+      },
+      "status": {
+        "enum": ["open", "awaiting_owner", "dropped", "ordered", "ended", "deleted"],
+        "type": "string"
+      },
+      "textCursor": {
+        "description": "API-077 consultation_text에 쓰는 현재 페이지 증표. 첫 페이지도 필요하며 반환한 메시지 중 앞20개까지/운영자/가게/상담에 묶임.10분 만료 또는 페이지 구성이 바뀌면422로 다시 불러옴. 지운 상담은 null",
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9_-]+$",
+        "type": ["string", "null"]
+      }
+    },
+    "required": ["consultationId", "status", "maskedValues", "items", "nextCursor", "textCursor"],
+    "type": "object"
+  },
+  "OperatorConsultationRow": {
+    "additionalProperties": false,
+    "description": "운영자가 보는 상담 한 행. 대화 내용은 없음(SPEC-073)",
+    "properties": {
+      "consultationId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "lastMessageAt": {
+        "format": "date-time",
+        "type": ["string", "null"]
+      },
+      "maskedValueCount": {
+        "description": "대화 속 마스킹한 번호 수",
+        "maximum": 1000,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "orderNos": {
+        "description": "이 상담에서 다룬 주문번호",
+        "items": {
+          "description": "주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)",
+          "maxLength": 8,
+          "minLength": 6,
+          "pattern": "^[0-9A-Z]{6,8}$",
+          "type": "string"
+        },
+        "maxItems": 20,
+        "minItems": 0,
+        "type": "array"
+      },
+      "startedAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "status": {
+        "enum": ["open", "awaiting_owner", "dropped", "ordered", "ended", "deleted"],
+        "type": "string"
+      }
+    },
+    "required": ["consultationId", "status", "startedAt", "lastMessageAt", "orderNos", "maskedValueCount"],
+    "type": "object"
+  },
+  "OperatorMaskedValue": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "enum": ["phone", "account", "card", "long_number"],
+        "type": "string"
+      },
+      "last4": {
+        "description": "끝 4자리. 긴 숫자는 null(REQ-192)",
+        "maxLength": 4,
+        "minLength": 4,
+        "pattern": "^[0-9]{4}$",
+        "type": ["string", "null"]
+      },
+      "maskedValueId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "originalKept": {
+        "description": "원래 값이 있어 사유를 적고 열 수 있음(전화번호·계좌번호). 카드번호·긴 숫자는 false(REQ-192)",
+        "type": "boolean"
+      },
+      "placeholder": {
+        "maxLength": 12,
+        "minLength": 5,
+        "pattern": "^\\[(전화번호|계좌번호|카드번호|긴숫자)[0-9]{1,3}\\]$",
+        "type": "string"
+      }
+    },
+    "required": ["maskedValueId", "kind", "placeholder", "last4", "originalKept"],
+    "type": "object"
+  },
+  "OperatorMessage": {
+    "additionalProperties": false,
+    "description": "운영자가 보는 메시지 하나: 발신자·시각·종류·글자 수·사진 수만(REQ-227)",
+    "properties": {
+      "at": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "author": {
+        "enum": ["customer", "ai", "system"],
+        "type": "string"
+      },
+      "direction": {
+        "enum": ["inbound", "outbound"],
+        "type": "string"
+      },
+      "kind": {
+        "enum": ["text", "photo", "card", "unsupported"],
+        "type": "string"
+      },
+      "messageId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "photoCount": {
+        "description": "사진 수만. 사진은 보이지 않음(REQ-194)",
+        "maximum": 10,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "textLength": {
+        "description": "대화 글의 글자 수(최대4000,4000이면4000자 이상). 번호 마스킹은 대화 속 이름·알레르기 같은 말을 가리지 않아 글은 보이지 않고, 사유를 적어 API-077(targetKind consultation_text)로 엶(REQ-227)",
+        "maximum": 4000,
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": ["messageId", "at", "direction", "author", "kind", "textLength", "photoCount"],
+    "type": "object"
+  },
+  "OperatorMessageText": {
+    "additionalProperties": false,
+    "description": "사유를 적어 연 대화 글의 메시지 하나(REQ-227, SPEC-073)",
+    "properties": {
+      "at": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "author": {
+        "enum": ["customer", "ai", "system"],
+        "type": "string"
+      },
+      "messageId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "textMasked": {
+        "description": "마스킹한 글의 앞4000자(번호는 플레이스홀더 그대로, SPEC-021). 끝 4자리는 API-075의 maskedValues에서. 글이 없는 메시지(사진 등)는 null",
+        "maxLength": 4000,
+        "minLength": 0,
+        "type": ["string", "null"]
+      }
+    },
+    "required": ["messageId", "at", "author", "textMasked"],
+    "type": "object"
+  },
+  "OperatorOrder": {
+    "additionalProperties": false,
+    "description": "운영자가 보는 주문 하나(가린 값, SPEC-073)",
+    "properties": {
+      "allergyAnswered": {
+        "description": "알레르기 답이 있음. 답은 보이지 않음(REQ-194)",
+        "type": "boolean"
+      },
+      "amount": {
+        "description": "원",
+        "maximum": 10000000,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "consultationId": {
+        "format": "uuid",
+        "type": ["string", "null"]
+      },
+      "createdAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "customerNameMasked": {
+        "description": "가린 이름: 첫 글자 밖은 *(SPEC-073)",
+        "maxLength": 30,
+        "minLength": 1,
+        "pattern": "^[^*\\s]\\**$",
+        "type": ["string", "null"]
+      },
+      "customerPhoneMasked": {
+        "description": "가린 번호: 끝 4자리 밖은 *(SPEC-073)",
+        "maxLength": 40,
+        "minLength": 4,
+        "pattern": "^[*-]*[0-9]{4}$",
+        "type": ["string", "null"]
+      },
+      "excludedIngredientsAnswered": {
+        "description": "빼야 할 재료 답이 있음. 답은 보이지 않음(REQ-194)",
+        "type": "boolean"
+      },
+      "kind": {
+        "enum": ["standard", "custom"],
+        "type": "string"
+      },
+      "orderId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "orderNo": {
+        "description": "주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)",
+        "maxLength": 8,
+        "minLength": 6,
+        "pattern": "^[0-9A-Z]{6,8}$",
+        "type": "string"
+      },
+      "paymentRequests": {
+        "description": "결제 안내 요약. 입금자 이름은 보이지 않음",
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "amount": {
+              "maximum": 10000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "issuedAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "kind": {
+              "enum": ["first", "reissue", "difference"],
+              "type": "string"
+            },
+            "paidAt": {
+              "format": "date-time",
+              "type": ["string", "null"]
+            },
+            "paymentRequestId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "status": {
+              "enum": ["open", "claimed", "mismatch", "paid", "expired", "closed"],
+              "type": "string"
+            }
+          },
+          "required": ["paymentRequestId", "kind", "status", "amount", "issuedAt", "paidAt"],
+          "type": "object"
+        },
+        "maxItems": 20,
+        "minItems": 0,
+        "type": "array"
+      },
+      "pickupAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "referencePhotoCount": {
+        "description": "참고 사진 수. 사진은 보이지 않음(REQ-194)",
+        "maximum": 10,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "refunds": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "amount": {
+              "maximum": 100000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "cause": {
+              "enum": [
+                "customer_cancel",
+                "shop_cancel",
+                "change_reduced",
+                "compensation",
+                "paid_after_cancel",
+                "over_received"
+              ],
+              "type": "string"
+            },
+            "decidedAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "decision": {
+              "enum": ["full", "partial", "none"],
+              "type": "string"
+            },
+            "refundAccount": {
+              "additionalProperties": false,
+              "description": "가린 환불 계좌. 원래 값은 사유를 적어 API-077(targetKind refund_account)로",
+              "properties": {
+                "accountMasked": {
+                  "description": "가린 번호: 끝 4자리 밖은 *(SPEC-073)",
+                  "maxLength": 40,
+                  "minLength": 4,
+                  "pattern": "^[*-]*[0-9]{4}$",
+                  "type": "string"
+                },
+                "bankName": {
+                  "maxLength": 30,
+                  "minLength": 1,
+                  "type": ["string", "null"]
+                },
+                "holderNameMasked": {
+                  "description": "가린 이름: 첫 글자 밖은 *(SPEC-073)",
+                  "maxLength": 30,
+                  "minLength": 1,
+                  "pattern": "^[^*\\s]\\**$",
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["bankName", "accountMasked", "holderNameMasked"],
+              "type": ["object", "null"]
+            },
+            "refundId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "sentAt": {
+              "format": "date-time",
+              "type": ["string", "null"]
+            }
+          },
+          "required": ["refundId", "cause", "decision", "amount", "decidedAt", "sentAt", "refundAccount"],
+          "type": "object"
+        },
+        "maxItems": 20,
+        "minItems": 0,
+        "type": "array"
+      },
+      "status": {
+        "enum": [
+          "requested",
+          "awaiting_payment",
+          "payment_overdue",
+          "confirmed",
+          "received",
+          "no_pickup",
+          "rejected",
+          "cancelled"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "orderId",
+      "orderNo",
+      "kind",
+      "status",
+      "pickupAt",
+      "amount",
+      "customerNameMasked",
+      "customerPhoneMasked",
+      "allergyAnswered",
+      "excludedIngredientsAnswered",
+      "referencePhotoCount",
+      "consultationId",
+      "paymentRequests",
+      "refunds",
+      "createdAt"
+    ],
+    "type": "object"
+  },
+  "OperatorOrderRow": {
+    "additionalProperties": false,
+    "description": "운영자가 보는 주문 한 행(가린 값, SPEC-073)",
+    "properties": {
+      "amount": {
+        "description": "원",
+        "maximum": 10000000,
+        "minimum": 0,
+        "type": ["integer", "null"]
+      },
+      "contractKeepUntil": {
+        "description": "계약·결제 기록을 둘 때까지(끝난 날부터 5년, 잠정)",
+        "format": "date-time",
+        "type": ["string", "null"]
+      },
+      "createdAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "customerNameMasked": {
+        "description": "가린 이름: 첫 글자 밖은 *(SPEC-073)",
+        "maxLength": 30,
+        "minLength": 1,
+        "pattern": "^[^*\\s]\\**$",
+        "type": ["string", "null"]
+      },
+      "customerPhoneMasked": {
+        "description": "가린 번호: 끝 4자리 밖은 *(SPEC-073)",
+        "maxLength": 40,
+        "minLength": 4,
+        "pattern": "^[*-]*[0-9]{4}$",
+        "type": ["string", "null"]
+      },
+      "finishedAt": {
+        "format": "date-time",
+        "type": ["string", "null"]
+      },
+      "kept": {
+        "description": "끝나고 30일이 지나 보관 기록이 됨. true면 주문번호·끝난 날·보관 기간과 keptRecordId만 있고 나머지는 null(SPEC-073, 05단계 A22)",
+        "type": "boolean"
+      },
+      "keptRecordId": {
+        "description": "보관 기록 ID. 내용은 사유를 적어 API-077(targetKind kept_record)로 엶",
+        "format": "uuid",
+        "type": ["string", "null"]
+      },
+      "orderId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "orderNo": {
+        "description": "주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)",
+        "maxLength": 8,
+        "minLength": 6,
+        "pattern": "^[0-9A-Z]{6,8}$",
+        "type": "string"
+      },
+      "pickupAt": {
+        "format": "date-time",
+        "type": ["string", "null"]
+      },
+      "status": {
+        "enum": [
+          "requested",
+          "awaiting_payment",
+          "payment_overdue",
+          "confirmed",
+          "received",
+          "no_pickup",
+          "rejected",
+          "cancelled",
+          null
+        ],
+        "type": ["string", "null"]
+      }
+    },
+    "required": [
+      "orderId",
+      "orderNo",
+      "kept",
+      "keptRecordId",
+      "status",
+      "pickupAt",
+      "amount",
+      "customerNameMasked",
+      "customerPhoneMasked",
+      "finishedAt",
+      "contractKeepUntil",
+      "createdAt"
+    ],
+    "type": "object"
+  },
+  "OperatorRecordList": {
+    "additionalProperties": false,
+    "properties": {
+      "consultations": {
+        "description": "kind가 consultations일 때. 아니면 빈 목록",
+        "items": {
+          "$ref": "#/components/schemas/OperatorConsultationRow"
+        },
+        "maxItems": 100,
+        "minItems": 0,
+        "type": "array"
+      },
+      "kind": {
+        "enum": ["orders", "consultations"],
+        "type": "string"
+      },
+      "nextCursor": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9_-]+$",
+        "type": ["string", "null"]
+      },
+      "orders": {
+        "description": "kind가 orders일 때. 아니면 빈 목록",
+        "items": {
+          "$ref": "#/components/schemas/OperatorOrderRow"
+        },
+        "maxItems": 100,
+        "minItems": 0,
+        "type": "array"
+      }
+    },
+    "required": ["kind", "orders", "consultations", "nextCursor"],
+    "type": "object"
+  },
+  "OriginalValue": {
+    "additionalProperties": false,
+    "description": "연 원래 값·보관 기록·대화 글 한 페이지(targetKind의 필드만 있고 나머지는 null). 이 응답과 그 화면에만 있고 로그·오류 보고에는 없음(G6)",
+    "properties": {
+      "consultationText": {
+        "additionalProperties": false,
+        "description": "연 상담의 대화 글 한 페이지(REQ-227). 다른 페이지도 사유를 적어 엶",
+        "properties": {
+          "consultationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "items": {
+            "description": "그 페이지의 메시지(API-075의 기본 페이지와 같은 20개까지)",
+            "items": {
+              "$ref": "#/components/schemas/OperatorMessageText"
+            },
+            "maxItems": 20,
+            "minItems": 0,
+            "type": "array"
+          }
+        },
+        "required": ["consultationId", "items"],
+        "type": ["object", "null"]
+      },
+      "keptRecord": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/KeptRecord"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "maskedValue": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": ["phone", "account"],
+            "type": "string"
+          },
+          "placeholder": {
+            "maxLength": 12,
+            "minLength": 5,
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["placeholder", "kind", "value"],
+        "type": ["object", "null"]
+      },
+      "openedAt": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "orderContact": {
+        "additionalProperties": false,
+        "properties": {
+          "customerName": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": ["string", "null"]
+          },
+          "customerPhone": {
+            "maxLength": 14,
+            "minLength": 8,
+            "pattern": "^[0-9-]{8,14}$",
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["customerName", "customerPhone"],
+        "type": ["object", "null"]
+      },
+      "refundAccount": {
+        "additionalProperties": false,
+        "properties": {
+          "accountNumber": {
+            "maxLength": 40,
+            "minLength": 10,
+            "pattern": "^-*([0-9]-*){10,16}$",
+            "type": "string"
+          },
+          "bankName": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": ["string", "null"]
+          },
+          "holderName": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["bankName", "accountNumber", "holderName"],
+        "type": ["object", "null"]
+      },
+      "targetId": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "targetKind": {
+        "enum": ["masked_value", "order_contact", "refund_account", "kept_record", "consultation_text"],
+        "type": "string"
+      }
+    },
+    "required": [
+      "targetKind",
+      "targetId",
+      "openedAt",
+      "maskedValue",
+      "orderContact",
+      "refundAccount",
+      "keptRecord",
+      "consultationText"
+    ],
+    "type": "object"
+  }
+}
