@@ -9,7 +9,7 @@ import { isolatedTestDb } from "./support/isolated-db";
 import { createShop } from "./support/shops";
 
 it.skipIf(!TEST_DATABASE_URL)(
-  "기본 꺼짐은 예약·재시도·불확실 재시도·사후 확인과 주문별 확인을 막고 기록은 보존한다",
+  "기본 꺼짐은 예약·재시도·불확실 재시도·사후 확인·복구와 주문별 확인을 막고 기록은 보존한다",
   async () => {
     const db = await isolatedTestDb();
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Google 호출 금지"));
@@ -20,7 +20,7 @@ it.skipIf(!TEST_DATABASE_URL)(
       const fields = testFieldCrypto(new Map([[1, newFieldKey()]]), 1);
       const writes: { shopId: string; ownerId: string; link: string; row: string; write: string; orderId: string }[] =
         [];
-      for (const state of ["pending", "retrying", "uncertain", "audit"] as const) {
+      for (const state of ["pending", "retrying", "uncertain", "audit", "repair"] as const) {
         const shop = await createShop(db.db, `스위치 ${state}`),
           link = crypto.randomUUID(),
           ref = crypto.randomUUID(),
@@ -52,10 +52,12 @@ it.skipIf(!TEST_DATABASE_URL)(
             shop.shopId,
             row,
             `switch:${write}`,
-            state === "audit" ? "written" : state === "pending" ? "pending" : "retrying",
+            state === "audit" ? "written" : state === "pending" || state === "repair" ? "pending" : "retrying",
             state === "uncertain" || state === "audit",
           ],
         );
+        if (state === "repair")
+          await db.db.query("UPDATE ledger_writes SET audit_repair_link_id=$2 WHERE id=$1", [write, link]);
         writes.push({ shopId: shop.shopId, ownerId: shop.ownerId, link, row, write, orderId: shop.orderId });
       }
       for (const item of writes) {
@@ -78,7 +80,7 @@ it.skipIf(!TEST_DATABASE_URL)(
       }
       const initial = (
         await db.db.query(
-          "SELECT id,status,next_attempt_at,audit_due_at,write_uncertain FROM ledger_writes WHERE id=ANY($1::uuid[]) ORDER BY id",
+          "SELECT id,status,next_attempt_at,audit_due_at,write_uncertain,audit_repair_link_id FROM ledger_writes WHERE id=ANY($1::uuid[]) ORDER BY id",
           [writes.map((x) => x.write)],
         )
       ).rows;
@@ -108,7 +110,7 @@ it.skipIf(!TEST_DATABASE_URL)(
       expect(
         (
           await db.db.query(
-            "SELECT id,status,next_attempt_at,audit_due_at,write_uncertain FROM ledger_writes WHERE id=ANY($1::uuid[]) ORDER BY id",
+            "SELECT id,status,next_attempt_at,audit_due_at,write_uncertain,audit_repair_link_id FROM ledger_writes WHERE id=ANY($1::uuid[]) ORDER BY id",
             [writes.map((x) => x.write)],
           )
         ).rows,
