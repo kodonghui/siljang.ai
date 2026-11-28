@@ -180,17 +180,17 @@ export const DUE_SOURCES = {
     table: "ledger_writes",
     dueColumn: "next_attempt_at",
     index: "ledger_writes_due_idx",
-    find: "SELECT t.shop_id, t.id, t.next_attempt_at AS due_at FROM ledger_writes t WHERE EXISTS (SELECT 1 FROM shops s WHERE s.id=t.shop_id AND s.ledger_write_enabled) AND t.status IN ('pending', 'retrying', 'alerted') AND t.next_attempt_at <= $1 ORDER BY t.next_attempt_at, t.id LIMIT $2",
+    find: "SELECT t.shop_id, t.id, t.next_attempt_at AS due_at FROM ledger_writes t WHERE t.status IN ('pending', 'retrying', 'alerted') AND EXISTS (SELECT 1 FROM shops s WHERE s.id=t.shop_id AND s.ledger_write_enabled) AND t.next_attempt_at <= $1 ORDER BY t.next_attempt_at, t.id LIMIT $2",
     claim:
-      "SELECT t.id FROM ledger_writes t WHERE t.shop_id = $1 AND t.id = $2 AND EXISTS (SELECT 1 FROM shops s WHERE s.id=t.shop_id AND s.ledger_write_enabled) AND t.status IN ('pending', 'retrying', 'alerted') AND t.next_attempt_at <= $3 FOR UPDATE SKIP LOCKED",
+      "SELECT t.id FROM ledger_writes t WHERE t.shop_id = $1 AND t.id = $2 AND t.status IN ('pending', 'retrying', 'alerted') AND EXISTS (SELECT 1 FROM shops s WHERE s.id=t.shop_id AND s.ledger_write_enabled) AND t.next_attempt_at <= $3 FOR UPDATE SKIP LOCKED",
   },
   ledger_audit: {
     table: "ledger_writes",
     dueColumn: "audit_due_at",
     index: "ledger_writes_audit_due_idx",
-    find: "SELECT t.shop_id, t.id, t.audit_due_at AS due_at FROM ledger_writes t WHERE EXISTS (SELECT 1 FROM shops s WHERE s.id=t.shop_id AND s.ledger_write_enabled) AND t.status = 'written' AND t.audit_due_at IS NOT NULL AND t.audit_due_at <= $1 ORDER BY t.audit_due_at, t.id LIMIT $2",
+    find: "SELECT t.shop_id, t.id, t.audit_due_at AS due_at FROM ledger_writes t WHERE t.status = 'written' AND t.audit_due_at IS NOT NULL AND EXISTS (SELECT 1 FROM shops s WHERE s.id=t.shop_id AND s.ledger_write_enabled) AND t.audit_due_at <= $1 ORDER BY t.audit_due_at, t.id LIMIT $2",
     claim:
-      "SELECT t.id FROM ledger_writes t WHERE t.shop_id = $1 AND t.id = $2 AND EXISTS (SELECT 1 FROM shops s WHERE s.id=t.shop_id AND s.ledger_write_enabled) AND t.status = 'written' AND t.audit_due_at IS NOT NULL AND t.audit_due_at <= $3 FOR UPDATE SKIP LOCKED",
+      "SELECT t.id FROM ledger_writes t WHERE t.shop_id = $1 AND t.id = $2 AND t.status = 'written' AND t.audit_due_at IS NOT NULL AND EXISTS (SELECT 1 FROM shops s WHERE s.id=t.shop_id AND s.ledger_write_enabled) AND t.audit_due_at <= $3 FOR UPDATE SKIP LOCKED",
   },
 } as const satisfies Record<string, DueSource>;
 
