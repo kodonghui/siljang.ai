@@ -321,16 +321,53 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     await expectProblem(await send(cookie), "version_conflict");
   });
   it("교환 뒤 응답이 유실돼도 같은 인가 코드는 다시 구글에 보내지 않는다", async () => {
-    let exchanges = 0, sheetWrites = 0;
+    let exchanges = 0,
+      sheetWrites = 0;
     const fields = testFieldCrypto(new Map([[1, newFieldKey()]]), 1);
     const overrides = {
       fieldCrypto: fields,
-      ledgerAuthorization: { start: async () => { throw new Error("unused"); }, verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }) },
-      ledgerGoogle: { authorizeUrl: () => "", exchange: async () => { exchanges++; return { accessToken: new Secret("test-access"), refreshToken: new Secret("test-refresh"), expiresAt: NOW }; } },
-      ledgerSetup: { connect: async () => { sheetWrites++; throw new GoogleLedgerUnavailableError(); } },
+      ledgerAuthorization: {
+        start: async () => {
+          throw new Error("unused");
+        },
+        verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }),
+      },
+      ledgerGoogle: {
+        authorizeUrl: () => "",
+        exchange: async () => {
+          exchanges++;
+          return { accessToken: new Secret("test-access"), refreshToken: new Secret("test-refresh"), expiresAt: NOW };
+        },
+      },
+      ledgerSetup: {
+        connect: async () => {
+          sheetWrites++;
+          throw new GoogleLedgerUnavailableError();
+        },
+      },
     } as unknown as ServiceOverrides;
-    const body = JSON.stringify({ baseRevision: null, code: "fixture-code", state: "fixture-state-123456789", spreadsheetId: SHEET, sheetName: "주문 장부" });
-    const send = (key: string) => app(true, false, overrides).request(PATH, { method: "PUT", headers: { cookie, Origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": key }, body }, testEnv());
+    const body = JSON.stringify({
+      baseRevision: null,
+      code: "fixture-code",
+      state: "fixture-state-123456789",
+      spreadsheetId: SHEET,
+      sheetName: "주문 장부",
+    });
+    const send = (key: string) =>
+      app(true, false, overrides).request(
+        PATH,
+        {
+          method: "PUT",
+          headers: {
+            cookie,
+            Origin: "https://siljang.example",
+            "content-type": "application/json",
+            "Idempotency-Key": key,
+          },
+          body,
+        },
+        testEnv(),
+      );
     const key = `ledger-${newUuid()}`;
     await expectProblem(await send(key), "google_unavailable");
     await expectProblem(await send(key), "google_authorization_failed");

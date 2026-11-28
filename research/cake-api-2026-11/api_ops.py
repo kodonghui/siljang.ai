@@ -728,7 +728,7 @@ op(id="API-034", method="post", path="/owner/ledger/authorization", op="startLed
 op(id="API-035", method="put", path="/owner/ledger", op="linkLedger", tag="장부",
    summary="장부 연결·다시 연결", spec=["SPEC-009", "SPEC-064"], auth="owner", idem=True,
    desc="구글 인가 코드와 고른 시트·탭으로 장부를 연결하고 우리 열 헤더를 만든다. 같은 이름의 사장님 열이 있으면 오른쪽 빈 열에 만들고 movedRight(REQ-127). "
-        "다시 연결하면 '연결 끊김'으로 남은 주문들의 행을 지금 값으로 다시 적는다. 구글 권한이 거부되거나 시트를 열 수 없으면 연결하지 않는다.",
+        "다시 연결하면 '연결 끊김'으로 남은 주문들의 행을 지금 값으로 다시 적는다. 구글 Picker에서 앱에 공유할 파일을 고른다. 구글 권한이 거부되거나 시트를 열 수 없으면 연결하지 않는다. 연결 결과가 불확실하면 같은 인가 코드를 재전송하지 않고 현재 상태를 조회한 뒤 필요하면 구글 권한 요청부터 다시 시작한다.",
    body="LedgerLinkInput", body_examples={"link": dict(E.LEDGER_INPUT, baseRevision=None)},
    ok=[(200, "LedgerResult", {"created": {"outcome": "created", "ledger": E.LEDGER},
                               "moved_right": {"outcome": "created", "ledger": E.LEDGER_MOVED},

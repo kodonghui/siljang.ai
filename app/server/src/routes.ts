@@ -23,6 +23,7 @@ import type { Context, Hono, HonoRequest } from "hono";
 import { ACCESS_LOG_APIS, type AccessEntry, AccessRecorder } from "./access-log";
 import type { HonoEnv, Logger } from "./app";
 import { readJsonBody } from "./body";
+import type { Queryable } from "./db";
 import type { AuthorizedKakaoSkill } from "./kakao-skill-auth";
 import { type OperatorAlertDirectory, operatorAlertDirectory } from "./operator-alert-directory";
 import { isOperatorScope, type OperatorScope } from "./operator-scope";
@@ -53,6 +54,7 @@ export interface ShopCommandSpec {
   readonly command: string;
   readonly pathIds: readonly string[];
   readonly body: unknown;
+  prepare?(db: ShopDb): Promise<void>;
   execute(tx: ShopDb): Promise<CommandResult>;
   render(db: ShopDb, stored: StoredResult): Promise<unknown>;
   /** 오류 때 사용 중이지 않은 외부 파일만 정리한다. COMMIT 응답 유실이면 사용 여부를 먼저 확인한다. */
@@ -310,6 +312,7 @@ function shopRequest(c: Context<HonoEnv>, scope: ShopScope): ShopRequest {
           actor: actorOf(scope),
           pathIds: spec.pathIds,
           body: spec.body,
+          ...(spec.prepare ? { prepare: (q: Queryable) => spec.prepare?.(shopDb(scope, q)) ?? Promise.resolve() } : {}),
           execute: (tx) => spec.execute(shopDb(scope, tx)),
           render: (q, stored) => spec.render(shopDb(scope, q), stored),
         });

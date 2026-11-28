@@ -12,7 +12,7 @@ ERRORS = {
     "idempotency_key_reused": dict(status=422, meaning="같은 요청 키로 다른 명령이나 다른 내용을 보냄(서버가 요청 지문으로 가림, DEC-04)", message="다시 시도해 주세요", client="새 요청 키를 만들어 다시 보냄(화면의 잘못이라 로그에 남김)", spec="G2"),
     "consent_required": dict(status=422, meaning="개인정보 처리 위탁·재위탁 조건에 동의하지 않음. 넣은 값도 남기지 않음", message="개인정보 처리 위탁 조건에 동의해야 가게를 등록할 수 있어요", client="동의 체크박스를 보이고 넣은 값은 화면에만 둠(G7 동의 필요)", spec="SPEC-002"),
     "google_authorization_failed": dict(status=422, meaning="구글 인가 코드가 틀렸거나 지났거나 시트 권한이 빠짐", message="구글 연결을 다시 해 주세요", client="구글 권한 요청을 처음부터 다시 하게 함", spec="SPEC-009"),
-    "sheet_not_accessible": dict(status=422, meaning="고른 구글 시트나 탭을 받은 권한으로 열 수 없음", message="그 시트를 열 수 없어요. 주소와 탭 이름을 확인해 주세요", client="시트 주소 필드 옆에 사유를 보임", spec="SPEC-009"),
+    "sheet_not_accessible": dict(status=422, meaning="고른 구글 시트나 탭을 받은 권한으로 열 수 없음. 권한 요청부터 다시 시작함", message="그 시트를 열 수 없어요. 주소와 탭을 확인하고 구글 연결을 다시 해 주세요", client="시트 주소와 탭 사유를 보이고 구글 권한 요청부터 다시 시작함", spec="SPEC-009"),
     "unauthenticated": dict(status=401, meaning="로그인(세션 쿠키)이 없거나 만료됨", message="다시 로그인해 주세요", client="로그인으로 보내고 로그인 뒤 원래 화면으로 돌아옴(SPEC-001)", spec="SPEC-001"),
     "kakao_login_failed": dict(status=401, meaning="카카오 인가 코드가 틀렸거나 지났거나 사장님이 동의를 거부함. 또는 state가 로그인 시작(API-078)의 서명·10분·로그인 시작 쿠키와 맞지 않음(이때는 카카오를 호출하지 않음, DEC-10). 우리 쪽 기록은 남기지 않음", message="카카오 로그인을 다시 해 주세요", client="카카오 로그인 버튼을 다시 보이고, 누르면 로그인 시작(API-078)부터 다시 함", spec="SPEC-001"),
     "operator_login_failed": dict(status=401, meaning="운영자 이메일·비밀번호·2단계 인증 번호 가운데 맞지 않는 것이 있음(어느 것인지 알리지 않음)", message="로그인 정보가 맞지 않아요", client="입력 필드를 비우고 다시 받음", spec="SPEC-001"),
@@ -43,7 +43,7 @@ ERRORS = {
     "too_many_attempts": dict(status=429, meaning="운영자 로그인 실패가 15분에 5번을 넘음", message="잠시 뒤 다시 로그인해 주세요", client="Retry-After 초 동안 로그인 버튼을 막음", spec="SPEC-001"),
     "internal": dict(status=500, meaning="예상하지 못한 서버 오류. 내용은 로그에만(마스킹한 값과 추적 ID)", message="문제가 생겼어요. 다시 시도해 주세요", client="다시 시도 버튼과 추적 ID를 보임(G7 서버 실패)", spec="G7"),
     "kakao_unavailable": dict(status=503, meaning="카카오 로그인 서버가 답하지 않음", message="카카오에 연결하지 못했어요. 잠시 뒤 다시 해 주세요", client="다시 시도 버튼", spec="SPEC-001"),
-    "google_unavailable": dict(status=503, meaning="구글 서버가 답하지 않음", message="구글에 연결하지 못했어요. 잠시 뒤 다시 해 주세요", client="다시 시도 버튼", spec="SPEC-009"),
+    "google_unavailable": dict(status=503, meaning="장부 연결 결과를 확인하지 못함. 연결 기록은 저장되지 않았으나 시트 열은 생성됐을 수 있음", message="현재 연결 상태를 확인하고 구글 권한부터 다시 연결해 주세요", client="같은 인가 코드를 다시 보내지 않고 현재 연결을 조회한 뒤 필요하면 구글 권한 요청부터 다시 시작함", spec="SPEC-009"),
     "storage_unavailable": dict(status=503, meaning="사진 저장소에 쓰지 못함. 등록·저장 전체를 남기지 않음", message="사진을 저장하지 못했어요. 다시 올려 주세요", client="파일을 다시 고르게 함", spec="SPEC-002"),
     "auth_unavailable": dict(status=503, meaning="운영자 인증 서비스(Supabase Auth)가 답하지 않음(DEC-27)", message="로그인 서비스에 연결하지 못했어요. 잠시 뒤 다시 해 주세요", client="다시 시도 버튼", spec="SPEC-001"),
 }

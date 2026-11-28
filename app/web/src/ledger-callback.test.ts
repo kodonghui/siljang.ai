@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, expect, it } from "vitest";
-import { beginLedgerReturn, acceptLedgerReturn, takeLedgerReturn } from "./ledger-callback";
+import { acceptLedgerReturn, beginLedgerReturn, takeLedgerReturn } from "./ledger-callback";
+
 beforeEach(() => sessionStorage.clear());
 it("동일 가게의 일회성 콜백만 메모리에서 넘기고 코드는 저장하지 않는다", () => {
   beginLedgerReturn({ shopId: "shop-1", state: "signed-state-123456", revision: "123" });

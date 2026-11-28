@@ -170,7 +170,10 @@ def error_response(o, status, codes):
             "value": problem(o, 422, "validation_failed", fields=[{"field": "header:Idempotency-Key", "code": "required"}],
                              detail="요청 키 헤더가 없음")}
     lines = "\n".join(f"- `{c}`: {C.ERRORS[c]['meaning']}" for c in codes)
-    r = {"description": f"{STATUS_TEXT[status]}\n\n{lines}"}
+    status_text = STATUS_TEXT[status]
+    if o["id"] == "API-035" and status == 503:
+        status_text = "연결 기록은 저장하지 않았으나 구글 시트 열이 생성됐을 수 있음. 먼저 현재 연결 상태를 조회하고 필요하면 구글 권한 요청부터 다시 시작하며 기존 서명 열을 확인해 재사용함"
+    r = {"description": f"{status_text}\n\n{lines}"}
     if status == 429:
         r["headers"] = {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}
     r["content"] = {"application/problem+json": {"schema": {"$ref": SCHEMA_REF + "Problem"}, "examples": examples}}

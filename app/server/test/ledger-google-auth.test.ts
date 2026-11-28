@@ -62,9 +62,18 @@ describe("구글 장부 인가 코드 교환: 고정 주소/최소 범위/토큰
       expect(send).not.toHaveBeenCalled();
     },
   );
-  it.each(["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets"])("필요한 파일 범위 외 권한이 있으면 허용하지 않는다: %s", async (scope) => {
+  it.each([
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets",
+  ])("필요한 파일 범위 외 권한이 있으면 허용하지 않는다: %s", async (scope) => {
     const tokens = { ...credential(), scope };
-    expect(await googleLedgerOAuth(settings(), { fetch: async () => reply(tokens) }).exchange("fixture/code", redirect, "v".repeat(43))).toBeNull();
+    expect(
+      await googleLedgerOAuth(settings(), { fetch: async () => reply(tokens) }).exchange(
+        "fixture/code",
+        redirect,
+        "v".repeat(43),
+      ),
+    ).toBeNull();
   });
   it("인가 코드/PKCE는 고정 토큰 주소의 본문에만 보내고 비밀 래퍼로 돌려준다", async () => {
     const config = settings(),

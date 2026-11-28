@@ -1,8 +1,9 @@
 /** 장부 응답에는 열/상태만 두고 시크릿 저장소의 참조와 OAuth 토큰은 반환하지 않는다. */
 
 import { requireJson } from "./body";
+import { errorFields } from "./error-name";
 import { storeLedgerCredential } from "./ledger-credential-store";
-import { type GoogleLedgerCredential, GoogleLedgerUnavailableError } from "./ledger-google-auth";
+import type { GoogleLedgerCredential } from "./ledger-google-auth";
 import { parseLedgerLink } from "./ledger-input";
 import { LEDGER_COOKIE } from "./ledger-oauth";
 import type { LedgerSheetSetup } from "./ledger-sheet-setup";
@@ -117,11 +118,12 @@ export async function linkLedger(r: ShopRequest): Promise<Response> {
     input = parseLedgerLink(raw),
     actor = r.scope.via;
   if (actor.kind !== "owner") throw new ApiError("unauthenticated");
+  let verified: { redirect: string; verifier: string } | null = null;
   return r.command({
     command: "API-035",
     pathIds: [],
     body: raw,
-    async execute(db) {
+    async prepare(db) {
       const locked = (
         await db.run<{ outcome: string }>("SELECT siljang_ledger_private.lock_owner_ledger($1,$2,$3) AS outcome", [
           actor.ownerId,
@@ -130,7 +132,7 @@ export async function linkLedger(r: ShopRequest): Promise<Response> {
       ).rows[0];
       if (locked?.outcome === "conflict") throw new ApiError("version_conflict");
       if (locked?.outcome !== "ok") throw new ApiError("not_set");
-      const state = await r.services
+      verified = await r.services
         .ledgerAuthorization()
         .verify(
           { shopId: db.scope.shopId, ownerId: actor.ownerId },
@@ -138,15 +140,38 @@ export async function linkLedger(r: ShopRequest): Promise<Response> {
           readCookie(r.req.header("cookie"), LEDGER_COOKIE),
           r.services.now(),
         );
-      if (state === null) throw new ApiError("google_authorization_failed");
-      const fields = r.services.fieldCrypto();
-      const sheets = r.services.ledgerSetup();
+      if (verified === null) throw new ApiError("google_authorization_failed");
+      r.services.fieldCrypto();
+      r.services.ledgerSetup();
+      r.services.ledgerGoogle();
       const vault = (
         await db.run<{ ready: boolean }>(
           "SELECT siljang_ledger_private.ledger_vault_ready() AS ready WHERE $1::uuid IS NOT NULL",
         )
       ).rows[0];
       if (!vault?.ready) throw new Error("ledger vault is unavailable");
+      const fingerprint = await r.services.ledgerCodeFingerprint(input.code);
+      const consumed = (
+        await db.run<{ consumed: boolean }>(
+          "SELECT siljang_ledger_private.consume_owner_ledger_code($1,$2,$3) AS consumed",
+          [actor.ownerId, fingerprint],
+        )
+      ).rows[0];
+      if (!consumed?.consumed) throw new ApiError("google_authorization_failed");
+    },
+    async execute(db) {
+      const state = verified;
+      if (state === null) throw new ApiError("google_authorization_failed");
+      const locked = (
+        await db.run<{ outcome: string }>("SELECT siljang_ledger_private.lock_owner_ledger($1,$2,$3) AS outcome", [
+          actor.ownerId,
+          input.baseRevision,
+        ])
+      ).rows[0];
+      if (locked?.outcome === "conflict") throw new ApiError("version_conflict");
+      if (locked?.outcome !== "ok") throw new ApiError("not_set");
+      const fields = r.services.fieldCrypto();
+      const sheets = r.services.ledgerSetup();
       let credential: GoogleLedgerCredential | null;
       let setup: LedgerSheetSetup | null;
       try {
@@ -154,40 +179,45 @@ export async function linkLedger(r: ShopRequest): Promise<Response> {
         if (credential === null) throw new ApiError("google_authorization_failed");
         setup = await sheets.connect(credential.accessToken, db.scope.shopId, input.spreadsheetId, input.sheetName);
         if (setup === null) throw new ApiError("sheet_not_accessible");
+        const id = crypto.randomUUID();
+        const created = (
+          await db.run<{ outcome: string }>(
+            "SELECT * FROM siljang_ledger_private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)",
+            [
+              actor.ownerId,
+              id,
+              input.spreadsheetId,
+              input.sheetName,
+              JSON.stringify({
+                columns: setup.columns,
+                movedRight: setup.movedRight,
+                ownershipToken: setup.ownershipToken,
+              }),
+              input.baseRevision,
+              r.services.now(),
+            ],
+          )
+        ).rows[0];
+        if (created?.outcome === "conflict") throw new ApiError("version_conflict");
+        if (!created) throw new ApiError("not_set");
+        await storeLedgerCredential(db, fields, id, credential.refreshToken);
+        const row = await currentLedger(db);
+        if (!row) throw new ApiError("not_set");
+        return {
+          status: 200,
+          code: created.outcome,
+          ref: { linkId: id },
+          body: { outcome: created.outcome, ledger: await renderLedger(db, row) },
+        };
       } catch (error) {
-        if (error instanceof GoogleLedgerUnavailableError) throw new ApiError("google_unavailable");
-        throw error;
-      }
-      const id = crypto.randomUUID();
-      const created = (
-        await db.run<{ outcome: string }>(
-          "SELECT * FROM siljang_ledger_private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)",
-          [
-            actor.ownerId,
-            id,
-            input.spreadsheetId,
-            input.sheetName,
-            JSON.stringify({
-              columns: setup.columns,
-              movedRight: setup.movedRight,
-              ownershipToken: setup.ownershipToken,
-            }),
-            input.baseRevision,
-            r.services.now(),
-          ],
+        if (
+          error instanceof ApiError &&
+          (error.code === "google_authorization_failed" || error.code === "sheet_not_accessible")
         )
-      ).rows[0];
-      if (created?.outcome === "conflict") throw new ApiError("version_conflict");
-      if (!created) throw new ApiError("not_set");
-      await storeLedgerCredential(db, fields, id, credential.refreshToken);
-      const row = await currentLedger(db);
-      if (!row) throw new ApiError("not_set");
-      return {
-        status: 200,
-        code: created.outcome,
-        ref: { linkId: id },
-        body: { outcome: created.outcome, ledger: await renderLedger(db, row) },
-      };
+          throw error;
+        r.log("error", { event: "ledger_link_uncertain", traceId: r.traceId, ...errorFields(error) });
+        throw new ApiError("google_unavailable");
+      }
     },
     async render(db, stored) {
       if (db.scope.via.kind !== "owner" || typeof stored.ref.linkId !== "string") throw new ApiError("not_set");

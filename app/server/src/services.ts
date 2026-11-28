@@ -24,7 +24,7 @@ import { kakaoOwnerAuth, type OwnerAuth } from "./owner-auth";
 import { type ImageBinding, type PhotoNormalizer, photoNormalizer } from "./photo-normalizer";
 import type { PrivacyPolicySettings } from "./privacy-policy-settings";
 import { bindingLimiter, type RateLimiter, type RateLimitRule } from "./rate-limit";
-import { MissingSettingError } from "./request-key";
+import { MissingSettingError, requestHash } from "./request-key";
 import type { Settings } from "./settings";
 import { type ObjectStore, S3Store } from "./storage";
 import { batchS3Store } from "./storage-batch";
@@ -57,6 +57,7 @@ export interface Services {
   /** 운영자 인증 서비스(Supabase Auth). SUPABASE_URL·SUPABASE_PUBLISHABLE_KEY가 없으면 MissingSettingError. */
   operatorAuth(): OperatorAuth;
   ownerAuth(): OwnerAuth;
+  ledgerCodeFingerprint(code: string): Promise<string>;
   ledgerAuthorization(): LedgerAuthorizationService;
   ledgerGoogle(): GoogleLedgerOAuth;
   ledgerSetup(): ReturnType<typeof ledgerSheetSetup>;
@@ -194,6 +195,9 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
       if (settings.ownerAuth === null) throw new MissingSettingError("KAKAO owner login settings are not set");
       ownerAuth = kakaoOwnerAuth(settings.ownerAuth);
       return ownerAuth;
+    },
+    ledgerCodeFingerprint(code) {
+      return requestHash(channelSecret(), "LEDGER-OAUTH-CODE", [], code);
     },
     ledgerAuthorization() {
       if (ledgerAuth !== undefined) return ledgerAuth;

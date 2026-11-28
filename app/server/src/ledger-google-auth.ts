@@ -1,8 +1,8 @@
 import { readBytesLimited } from "./body";
 import { Secret } from "./settings";
 
-// API035는 서버에서 고른 시트 ID를 연다. Picker에 OAuth 토큰을 넘기지 않으므로 Sheets 권한 하나만 요청한다.
-export const LEDGER_GOOGLE_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+// Google Picker로 사용자가 앱에 공유한 파일만 접근한다. 브라우저 토큰과 서버 갱신 토큰은 별도다.
+export const LEDGER_GOOGLE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 export class GoogleLedgerUnavailableError extends Error {
   override readonly name = "GoogleLedgerUnavailableError";
   constructor() {
@@ -92,10 +92,7 @@ export function googleLedgerOAuth(
         )
           throw new GoogleLedgerUnavailableError();
         if (!token(data.refresh_token)) return null;
-        if (
-          data.scope !== undefined &&
-          (typeof data.scope !== "string" || !data.scope.split(/\s+/).includes(LEDGER_GOOGLE_SCOPE))
-        )
+        if (data.scope !== undefined && (typeof data.scope !== "string" || data.scope.trim() !== LEDGER_GOOGLE_SCOPE))
           return null;
         const expiresAt = new Date((options.now?.() ?? new Date()).getTime() + data.expires_in * 1000);
         if (!Number.isFinite(expiresAt.getTime())) throw new GoogleLedgerUnavailableError();

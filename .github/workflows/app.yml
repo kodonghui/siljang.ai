@@ -206,6 +206,10 @@ jobs:
           cache-dependency-path: app/package-lock.json
 
       - name: 설치와 웹 빌드
+        env:
+          VITE_LEDGER_PICKER_CLIENT_ID: ${{ vars.VITE_LEDGER_PICKER_CLIENT_ID }}
+          VITE_LEDGER_PICKER_APP_ID: ${{ vars.VITE_LEDGER_PICKER_APP_ID }}
+          VITE_LEDGER_PICKER_API_KEY: ${{ vars.VITE_LEDGER_PICKER_API_KEY }}
         run: |
           npm ci --no-audit --no-fund
           npm run build -w web

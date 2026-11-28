@@ -13,7 +13,10 @@ export const ERRORS = {
   idempotency_key_reused: { status: 422, title: "다시 시도해 주세요" },
   consent_required: { status: 422, title: "개인정보 처리 위탁 조건에 동의해야 가게를 등록할 수 있어요" },
   google_authorization_failed: { status: 422, title: "구글 연결을 다시 해 주세요" },
-  sheet_not_accessible: { status: 422, title: "그 시트를 열 수 없어요. 주소와 탭 이름을 확인해 주세요" },
+  sheet_not_accessible: {
+    status: 422,
+    title: "그 시트를 열 수 없어요. 주소와 탭을 확인하고 구글 연결을 다시 해 주세요",
+  },
   unauthenticated: { status: 401, title: "다시 로그인해 주세요" },
   kakao_login_failed: { status: 401, title: "카카오 로그인을 다시 해 주세요" },
   operator_login_failed: { status: 401, title: "로그인 정보가 맞지 않아요" },
@@ -50,7 +53,7 @@ export const ERRORS = {
   too_many_attempts: { status: 429, title: "잠시 뒤 다시 로그인해 주세요" },
   internal: { status: 500, title: "문제가 생겼어요. 다시 시도해 주세요" },
   kakao_unavailable: { status: 503, title: "카카오에 연결하지 못했어요. 잠시 뒤 다시 해 주세요" },
-  google_unavailable: { status: 503, title: "구글에 연결하지 못했어요. 잠시 뒤 다시 해 주세요" },
+  google_unavailable: { status: 503, title: "현재 연결 상태를 확인하고 구글 권한부터 다시 연결해 주세요" },
   storage_unavailable: { status: 503, title: "사진을 저장하지 못했어요. 다시 올려 주세요" },
   auth_unavailable: { status: 503, title: "로그인 서비스에 연결하지 못했어요. 잠시 뒤 다시 해 주세요" },
 } as const satisfies Record<string, { readonly status: number; readonly title: string }>;

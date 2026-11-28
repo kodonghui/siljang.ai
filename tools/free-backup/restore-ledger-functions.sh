@@ -41,7 +41,7 @@ WHERE p.oid IN (
   pg_catalog.to_regprocedure('public.unlink_owner_ledger(uuid,uuid,timestamptz)')
 );
 SQL
-  for file in 0051_ledger_vault_status.sql 0052_ledger_unlink_vault.sql 0053_ledger_vault_store.sql 0054_ledger_create.sql 0055_ledger_lock.sql; do
+  for file in 0051_ledger_vault_status.sql 0052_ledger_unlink_vault.sql 0053_ledger_vault_store.sql 0054_ledger_create.sql 0055_ledger_lock.sql 0056_ledger_oauth_once.sql; do
     cat "$root/db/migrations/$file"
     printf '\n'
   done

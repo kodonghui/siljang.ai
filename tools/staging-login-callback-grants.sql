@@ -255,3 +255,5 @@ GRANT EXECUTE ON FUNCTION siljang_ledger_private.store_ledger_credential(uuid,uu
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.create_owner_ledger(uuid,uuid,uuid,text,text,jsonb,text,timestamptz) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.lock_owner_ledger(uuid,uuid,text) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.ledger_vault_ready() TO :"runtime_role";
+
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.consume_owner_ledger_code(uuid,uuid,text) TO :"runtime_role";
