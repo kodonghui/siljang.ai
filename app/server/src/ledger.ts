@@ -2,6 +2,7 @@
 import { ApiError } from "./problem";
 import type { ShopRequest } from "./routes";
 import type { ShopDb } from "./shop-scope";
+import { unlinkLedgerRecord } from "./ledger-unlink-store";
 import { toShopIso } from "./time";
 
 export interface LedgerRow {
@@ -68,4 +69,35 @@ export async function getLedger(r: ShopRequest): Promise<Response> {
       return renderLedger(db, row);
     }),
   );
+}
+
+/** API-036: 연결과 Vault 암호문을 같은 트랜잭션에서 해제한다. */
+export async function unlinkLedger(r: ShopRequest): Promise<Response> {
+  return r.command({
+    command: "API-036",
+    pathIds: [],
+    body: null,
+    async execute(db) {
+      const result = await unlinkLedgerRecord(db, r.services.now());
+      const row = await currentLedger(db);
+      if (!row) throw new ApiError("not_set");
+      return {
+        status: 200,
+        code: result.outcome,
+        ref: { linkId: result.linkId, keptWrites: result.keptWrites },
+        body: { outcome: result.outcome, ledger: await renderLedger(db, row), keptWrites: result.keptWrites },
+      };
+    },
+    async render(db, stored) {
+      if (db.scope.via.kind !== "owner" || typeof stored.ref.linkId !== "string") throw new ApiError("not_set");
+      const row = (
+        await db.run<LedgerRow>("SELECT * FROM public.read_owner_ledger($1,$2,$3)", [
+          db.scope.via.ownerId,
+          stored.ref.linkId,
+        ])
+      ).rows[0];
+      if (!row) throw new ApiError("not_set");
+      return { outcome: stored.code, ledger: await renderLedger(db, row), keptWrites: stored.ref.keptWrites };
+    },
+  });
 }

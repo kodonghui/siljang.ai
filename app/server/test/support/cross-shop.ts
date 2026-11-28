@@ -153,7 +153,7 @@ interface BookingCase {
 }
 
 interface LedgerShopCase {
-  readonly method: "GET" | "POST";
+  readonly method: "GET" | "POST" | "DELETE";
   readonly path: "/owner/ledger" | "/owner/ledger/authorization";
   readonly kind: "ledger";
 }
@@ -185,6 +185,7 @@ export type CrossShopCase =
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "GET", path: "/owner/ledger", kind: "ledger" },
+  { method: "DELETE", path: "/owner/ledger", kind: "ledger" },
   { method: "POST", path: "/owner/ledger/authorization", kind: "ledger" },
   {
     method: "GET",
@@ -413,12 +414,20 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
             `fixture-${shop.shopId}`,
           ],
         );
+      if (c.method === "DELETE") {
+        const beforeB = await snapshotShop(db, env.b);
+        const response = await send(env, "DELETE", { url: `${c.path}?shopId=${env.b.shopId}` });
+        expect(response.status, response.text).toBe(200);
+        expect(response.body).toMatchObject({ ledger: { status: "unlinked", sheetName: "가게A 장부" } });
+        expect(await snapshotShop(db, env.b)).toEqual(beforeB);
+        return;
+      }
       const before = await snapshots(db, env);
       for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
         const response = await send(env, "GET", { url: `${c.path}?shopId=${target}&ownerId=${env.b.ownerId}` });
         expect(response.status, response.text).toBe(200);
         expect(response.body).toMatchObject({
-          status: "linked",
+          status: "auth_lost",
           sheetName: "가게A 장부",
           spreadsheetId: `sheet_${env.a.shopId.replaceAll("-", "")}`,
         });
