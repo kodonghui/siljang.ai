@@ -61,6 +61,7 @@ function fixture() {
       for (let i = 0; i < 12; i++) headers[start + i] = write.rows[0].values[i].userEnteredValue.stringValue;
       expect(metadata.metadataKey).toBe("siljang_columns_v1");
       expect(metadata.visibility).toBe("PROJECT");
+      expect(metadata.location.dimensionRange.endIndex - metadata.location.dimensionRange.startIndex).toBe(1);
       markers.push(metadata);
       expect(JSON.stringify(body)).not.toContain(key.reveal());
       expect(JSON.stringify(body)).not.toContain(access.reveal());
@@ -89,7 +90,7 @@ function fixture() {
     metadataKey: "siljang_columns_v1",
     metadataValue: token,
     visibility: "PROJECT",
-    location: { dimensionRange: { sheetId, dimension: "COLUMNS", startIndex: start, endIndex: start + 12 } },
+    location: { dimensionRange: { sheetId, dimension: "COLUMNS", startIndex: start, endIndex: start + 1 } },
   });
   return {
     key,
