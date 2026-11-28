@@ -1,3 +1,7 @@
+# 2026-11-28 · TASK-156 Vault 예외 승인 기록
+
+동희님이 무료 Supabase Vault 보관과 DB 복구 뒤 장부 재연결을 승인하셨습니다. [결정 기록](optional-features/2026-11-26-ledger/vault-approval.md)을 남겼으며 구현과 실환경 확인은 아직 완료하지 않았습니다.
+
 # 진행 기록
 
 ### 2026-11-28 · TASK-161 Codex 리뷰 처리
@@ -5313,7 +5317,6 @@ TASK-068을 시작했습니다. 캘린더의 기존 60일 판정과 정원 계�
 | 작업 | 자료 | 동희님이 알려주실 정보 |
 | --- | --- | --- |
 | TASK-027 | 원본 eval-20261118T203404Z-d00cea/review.md의44건 | 원본이 남아 있는 컴퓨터·폴더 경로를 알고 계시면 알려 주세요. 현재116개 작업 폴더와 학원컴의 확인한 프로젝트/관련 임시 경로에서는 찾지 못했으며, 이것으로 다른 경로의 부재를 단정하지 않습니다. 44건 판정 전에는 TASK-027 구현 완료와 MVP 완료를 표시할 수 없습니다. 판정은 Codex가 하고 답을 기다리는 동안 다른 작업을 계속합니다. |
-| TASK-156 | [장부 토큰 저장 제안](https://github.com/kodonghui/siljang.ai/blob/e1c738938d632c3a2fdc342a071958155bfbe715/docs/records/optional-features/2026-11-26-ledger/credential-store-decision.md) | 기존 비밀 값 저장 규칙에 무료 Supabase Vault를 예외로 허용할지 정합니다. 무료 여부/권한/루트 키 보관 확인 뒤 사용을 추천하며, 답 전 실제 저장소 사용·API035/036 완료를 선언하지 않습니다. 공개 WIP91b32f9·17파일438개는 보존했습니다. |
 | TASK-016·165·167·172 | [백업 실제 설정 절차](../../tools/free-backup/README.md#실제-운영에서-켜기) | 학원컴 Aside CLI 연결을 회복하면 알려 주세요. 키 값을 채팅으로 보내지 않습니다. 기존 SSH 두 번 실패를 반복하지 않았고 현재 환경의 CF 토큰9109·Actions 비밀 값 목록403도 남아 있습니다. 복구되면 Codex가 Vault/전용 연결/허용된 설정과 [staging 환경 제한](https://github.com/kodonghui/siljang.ai/settings/environments)·[main 보호](https://github.com/kodonghui/siljang.ai/settings/branches)를 처리합니다. 환경 관리 API403으로 실제 설정은 바꾸지 못했고 새 인증 진단 job은 제거했습니다. |
 
 ### MVP를 막지 않는 것(출시 전까지)
