@@ -617,8 +617,10 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
           )
         ).rowCount,
       ).toBe(1);
-      await isolated.db.query("UPDATE ledger_writes SET audit_due_at=now()-interval '1 minute' WHERE id=$1", [write]);
-      resolved = true;
+      await isolated.db.query(
+        "UPDATE ledger_writes SET audit_due_at=now()-interval '1 minute',audit_deadline=now()-interval '1 second' WHERE id=$1",
+        [write],
+      );
       await runDueJobs({
         db,
         now: new Date(),
@@ -633,6 +635,28 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         log: () => {},
       });
       expect(writes).toBe(1);
+      expect(
+        (await isolated.db.query<{ status: string }>("SELECT status FROM ledger_writes WHERE id=$1", [write])).rows[0]
+          ?.status,
+      ).toBe("retrying");
+      await isolated.db.query("UPDATE ledger_writes SET next_attempt_at=now()-interval '1 minute' WHERE id=$1", [
+        write,
+      ]);
+      resolved = true;
+      await runDueJobs({
+        db,
+        now: new Date(),
+        jobs: [
+          {
+            name: "ledger_write",
+            every: "minute",
+            sources: ["ledger_write"],
+            handler: ledgerWriteJob(settings, services),
+          },
+        ],
+        log: () => {},
+      });
+      expect(writes).toBe(2);
       expect(
         (
           await isolated.db.query(
