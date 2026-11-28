@@ -3,12 +3,14 @@ import { GoogleLedgerUnavailableError } from "./ledger-google-auth";
 import { googleLedgerSheets, type LedgerSheetSnapshot } from "./ledger-google-sheet";
 import {
   LEDGER_HEADERS,
+  LEDGER_MAX_COLUMNS,
   LEDGER_STORAGE_HEADERS,
   type LedgerColumnPlan,
   LedgerColumnsOverflowError,
   planLedgerColumns,
   signLedgerColumns,
   verifyLedgerColumns,
+  verifyLegacyLedgerColumns,
 } from "./ledger-sheet-columns";
 import type { Secret } from "./settings";
 import { isUuid } from "./shop-scope";
@@ -62,6 +64,101 @@ export function ledgerSheetSetup(
         if (reused !== null) {
           if (!(await sheets.canEdit(access, file))) return null;
           return reused;
+        }
+        for (const marker of [...snapshot.markers].sort((a, b) => b.start - a.start)) {
+          const scope = { shopId, spreadsheetId: file, sheetId: snapshot.sheetId };
+          const legacy = await verifyLegacyLedgerColumns(key, scope, marker.token, marker.start);
+          if (!legacy || !LEDGER_HEADERS.every((header, i) => snapshot.headers[marker.start + i] === header)) continue;
+          if (snapshot.columnCount >= LEDGER_MAX_COLUMNS) throw new LedgerColumnsOverflowError();
+          if (!(await sheets.canEdit(access, file))) return null;
+          const idColumn = marker.start + LEDGER_HEADERS.length;
+          const token = await signLedgerColumns(key, scope, marker.start, legacy.movedRight);
+          const response = await send(`https://sheets.googleapis.com/v4/spreadsheets/${file}:batchUpdate`, {
+            method: "POST",
+            redirect: "manual",
+            signal: AbortSignal.timeout(options.timeoutMs ?? 5000),
+            headers: { Authorization: `Bearer ${access.reveal()}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              requests: [
+                {
+                  insertDimension: {
+                    range: {
+                      sheetId: snapshot.sheetId,
+                      dimension: "COLUMNS",
+                      startIndex: idColumn,
+                      endIndex: idColumn + 1,
+                    },
+                    inheritFromBefore: true,
+                  },
+                },
+                {
+                  updateCells: {
+                    start: { sheetId: snapshot.sheetId, rowIndex: 0, columnIndex: idColumn },
+                    rows: [
+                      {
+                        values: [
+                          {
+                            userEnteredValue: { stringValue: LEDGER_STORAGE_HEADERS[LEDGER_HEADERS.length] },
+                            note: "실장님이 중복 기록을 막는 데 쓰는 열, 지우거나 바꾸지 마세요",
+                          },
+                        ],
+                      },
+                    ],
+                    fields: "userEnteredValue,note",
+                  },
+                },
+                {
+                  updateDimensionProperties: {
+                    range: {
+                      sheetId: snapshot.sheetId,
+                      dimension: "COLUMNS",
+                      startIndex: idColumn,
+                      endIndex: idColumn + 1,
+                    },
+                    properties: { hiddenByUser: true },
+                    fields: "hiddenByUser",
+                  },
+                },
+                {
+                  updateDeveloperMetadata: {
+                    dataFilters: [
+                      {
+                        developerMetadataLookup: {
+                          metadataKey: "siljang_columns_v1",
+                          metadataValue: marker.token,
+                          visibility: "PROJECT",
+                        },
+                      },
+                    ],
+                    developerMetadata: { metadataValue: token },
+                    fields: "metadataValue",
+                  },
+                },
+              ],
+            }),
+          });
+          if (!response.ok) {
+            await response.body?.cancel().catch(() => {});
+            if ([400, 401, 403, 404].includes(response.status)) return null;
+            throw new GoogleLedgerUnavailableError();
+          }
+          const raw: unknown = JSON.parse(
+            new TextDecoder().decode(await readBytesLimited(response, 65536, () => new GoogleLedgerUnavailableError())),
+          );
+          if (
+            typeof raw !== "object" ||
+            raw === null ||
+            Array.isArray(raw) ||
+            (raw as Record<string, unknown>).spreadsheetId !== file ||
+            !Array.isArray((raw as Record<string, unknown>).replies) ||
+            ((raw as Record<string, unknown>).replies as unknown[]).length !== 4
+          )
+            throw new GoogleLedgerUnavailableError();
+          const checked = await sheets.inspect(access, file, tab);
+          if (checked === null) return null;
+          const upgraded = await existing(checked, shopId, file);
+          if (upgraded === null) throw new GoogleLedgerUnavailableError();
+          return upgraded;
         }
         const plan = planLedgerColumns(snapshot.columnCount, snapshot.headers),
           range = { sheetId: snapshot.sheetId, dimension: "COLUMNS", startIndex: plan.start, endIndex: plan.end };

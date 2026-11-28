@@ -59,7 +59,8 @@ async function signingKey(key: Secret) {
     ["sign", "verify"],
   );
 }
-function data(scope: LedgerSheetScope, start: number, movedRight: boolean) {
+function data(scope: LedgerSheetScope, start: number, movedRight: boolean, legacy = false) {
+  const headers = legacy ? LEDGER_HEADERS : LEDGER_STORAGE_HEADERS;
   return new TextEncoder().encode(
     JSON.stringify([
       "ledger-columns",
@@ -68,11 +69,41 @@ function data(scope: LedgerSheetScope, start: number, movedRight: boolean) {
       scope.spreadsheetId,
       scope.sheetId,
       start,
-      start + LEDGER_STORAGE_HEADERS.length,
+      start + headers.length,
       movedRight,
-      LEDGER_STORAGE_HEADERS,
+      headers,
     ]),
   );
+}
+/** 이전에 서명한 12개 열을 확인한다. 새 열을 만들 권한을 이 서명만으로 추측하지 않는다. */
+export async function verifyLegacyLedgerColumns(
+  key: Secret,
+  scope: LedgerSheetScope,
+  token: string,
+  start: number,
+): Promise<{ readonly movedRight: boolean } | null> {
+  if (
+    !validScope(scope) ||
+    !Number.isSafeInteger(start) ||
+    start < 0 ||
+    start + LEDGER_HEADERS.length > LEDGER_MAX_COLUMNS
+  )
+    return null;
+  const match = /^c1\.([a-z0-9]{1,3})\.([01])\.([A-Za-z0-9_-]{43})$/.exec(token);
+  if (!match || start.toString(36) !== match[1]) return null;
+  const signature = fromBase64Url(match[3] as string),
+    movedRight = match[2] === "1";
+  if (!signature || toBase64Url(signature) !== match[3]) return null;
+  if (
+    !(await crypto.subtle.verify(
+      "HMAC",
+      await signingKey(key),
+      signature as Uint8Array<ArrayBuffer>,
+      data(scope, start, movedRight, true),
+    ))
+  )
+    return null;
+  return { movedRight };
 }
 export function ledgerColumnName(index: number): string {
   if (!Number.isSafeInteger(index) || index < 0 || index >= LEDGER_MAX_COLUMNS)
