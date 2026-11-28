@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { TEST_DATABASE_URL } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
-import { createShop } from "./support/shops";
+import { createLedgerShop as createShop } from "./support/ledger-shop";
 
 it.skipIf(!TEST_DATABASE_URL)(
   "불확실 주문이 확인되기 전 같은 가게의 다른 주문은 기다리고 다른 가게는 진행한다",

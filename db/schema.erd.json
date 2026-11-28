@@ -423,7 +423,8 @@
           "03h7y0178l0hvzg6deack9vd8",
           "03h7y0178l0hvzg6dechcfbik",
           "03h7y0178l0hvzg6dee87xoq8",
-          "03h7y0178l0hvzg6dehkblvil"
+          "03h7y0178l0hvzg6dehkblvil",
+          "03hbju4zp7dbpisn8zdgek4x2"
         ],
         "groupId": "03h7y017wkyrgfkkkeykxgwvj",
         "ui": {
@@ -2249,6 +2250,15 @@
         "comment": "한 손님의 결제 기다림 주문 한도(REQ-263, REQ-265, 기본 2건, 0이면 한도 없음). 기본 디자인 주문 요청 때 그 손님의 결제 기다림 주문 수와 견줌(4절 A40). 바꾸면 저장한 때부터 씀",
         "dataType": "smallint",
         "default": "2",
+        "options": 8
+      },
+      "03hbju4zp7dbpisn8zdgek4x2": {
+        "id": "03hbju4zp7dbpisn8zdgek4x2",
+        "tableId": "03h7y0178fic3fnl5vhrhwxmb",
+        "name": "ledger_write_enabled",
+        "comment": "관리자만 켜는 장부 쓰기 허용 여부",
+        "dataType": "boolean",
+        "default": "false",
         "options": 8
       },
       "03h7y0178l0hvzg6delk653bu": {

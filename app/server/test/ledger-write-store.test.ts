@@ -9,8 +9,8 @@ import { readSettings, Secret } from "../src/settings";
 import { TEST_DATABASE_URL, testDb } from "./support/db";
 import { newFieldKey, testFieldCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
+import { createLedgerShop as createShop } from "./support/ledger-shop";
 import { createTestRole, roleConnection } from "./support/purge-role";
-import { createShop } from "./support/shops";
 
 describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>;

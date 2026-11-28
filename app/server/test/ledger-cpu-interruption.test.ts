@@ -4,7 +4,7 @@ import { writeLedgerSheet } from "../src/ledger-sheet-write";
 import { Secret } from "../src/settings";
 import { TEST_DATABASE_URL } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
-import { createShop } from "./support/shops";
+import { createLedgerShop as createShop } from "./support/ledger-shop";
 
 it.skipIf(!TEST_DATABASE_URL)(
   "CPU 중단으로 결과를 기록하지 못해도 5분 뒤 이미 쓴 ID를 확인하고 재전송하지 않는다",

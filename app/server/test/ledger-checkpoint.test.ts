@@ -3,7 +3,7 @@ import { buildLedgerCheckpoint } from "../src/ledger-checkpoint";
 import { Secret } from "../src/settings";
 import { TEST_DATABASE_URL } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
-import { createShop } from "./support/shops";
+import { createLedgerShop as createShop } from "./support/ledger-shop";
 
 it.skipIf(!TEST_DATABASE_URL)("쓰기 전 비교 기준은 임대와 연결에 묶어 별도 저장하고 성공 기록 때 지운다", async () => {
   const isolated = await isolatedTestDb();

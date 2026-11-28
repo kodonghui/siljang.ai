@@ -95,7 +95,7 @@ it.skipIf(!(await import("./support/db")).TEST_DATABASE_URL)(
   "할 일의 확인 버튼은 사장님 가게와 주문을 검증하고 그 행의 서명만 저장한다",
   async () => {
     const { isolatedTestDb } = await import("./support/isolated-db"),
-      { createShop } = await import("./support/shops"),
+      { createLedgerShop: createShop } = await import("./support/ledger-shop"),
       { createApp } = await import("../src/app"),
       { createShopScope } = await import("../src/shop-scope"),
       { newFieldKey, testFieldCrypto } = await import("./support/field-keys"),

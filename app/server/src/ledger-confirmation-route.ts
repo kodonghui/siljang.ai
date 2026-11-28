@@ -13,6 +13,10 @@ export async function confirmOwnerLedgerOrder(r: ShopRequest): Promise<Response>
   if (owner.kind !== "owner") throw new ApiError("unauthenticated");
   if (expected !== undefined && (!isUuid(expected) || expected.toLowerCase() !== r.scope.shopId))
     throw new ApiError("unauthenticated");
+  const enabled = (
+    await r.db.run<{ enabled: boolean }>("SELECT s.ledger_write_enabled AS enabled FROM shops s WHERE s.id=$1")
+  ).rows[0]?.enabled;
+  if (!enabled) throw new ApiError("not_found");
   return r.command({
     command: "API-084",
     pathIds: [taskId],

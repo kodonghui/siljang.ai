@@ -4,7 +4,7 @@ import { purgeOrder } from "../src/purge-order";
 import { createShopScope, shopDb } from "../src/shop-scope";
 import { TEST_DATABASE_URL } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
-import { createShop } from "./support/shops";
+import { createLedgerShop as createShop } from "./support/ledger-shop";
 
 async function fixture(db: Awaited<ReturnType<typeof isolatedTestDb>>) {
   const shop = await createShop(db.db, "재리뷰 다섯"),

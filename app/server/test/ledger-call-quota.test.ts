@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { TEST_DATABASE_URL } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
-import { createShop } from "./support/shops";
+import { createLedgerShop as createShop } from "./support/ledger-shop";
 
 it.skipIf(!TEST_DATABASE_URL)("여러 가게에서도 최근 60초 장부 호출 시작은 다섯 건으로 제한한다", async () => {
   const isolated = await isolatedTestDb();

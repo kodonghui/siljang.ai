@@ -92,6 +92,7 @@ CREATE TABLE shops (
   booking_issued_at         timestamptz,                       -- 예약 링크를 낸 시각
   created_at                timestamptz NOT NULL DEFAULT now(), -- 등록한 시각
   updated_at                timestamptz NOT NULL DEFAULT now(), -- 마지막으로 고친 시각
+  ledger_write_enabled      boolean NOT NULL DEFAULT false, -- 관리자만 켜는 장부 쓰기 허용 여부
   CONSTRAINT shops_one_per_owner UNIQUE (owner_id),            -- 카카오 계정 하나에 가게 하나(R2, SPEC-002)
   CONSTRAINT shops_booking_slug_uq UNIQUE (booking_slug),      -- 가게마다 하나인 예약 링크
   CONSTRAINT shops_mail_order_chk CHECK (mail_order_reg_no IS NOT NULL OR mail_order_exemption IS NOT NULL), -- 통신판매업 신고번호나 면제 사유(REQ-239)
@@ -2813,6 +2814,7 @@ BEGIN
   SELECT l.credential_ref INTO v_ref FROM public.ledger_links l
     JOIN public.ledger_writes w ON w.shop_id=l.shop_id
     WHERE l.shop_id=p_shop AND l.id=p_link AND l.status IN ('linked','auth_lost')
+      AND EXISTS (SELECT 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled)
       AND l.write_lease_id=p_write AND l.write_lease_until=p_lease
       AND w.id=p_write AND ((w.status IN ('pending','retrying','alerted') AND w.next_attempt_at=p_lease) OR (w.status='written' AND w.audit_due_at=p_lease));
   IF NOT FOUND OR pg_catalog.to_regclass('vault.decrypted_secrets') IS NULL THEN RETURN NULL; END IF;
@@ -2834,6 +2836,20 @@ BEGIN
 END
 $block$;
 
+-- 가게 설정 쓰기 권한이 넓어져도 장부 쓰기 스위치는 관리자만 바꾼다.
+CREATE FUNCTION public.guard_ledger_write_switch() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $switch$
+BEGIN
+  IF ((TG_OP='INSERT' AND NEW.ledger_write_enabled) OR (TG_OP='UPDATE' AND NEW.ledger_write_enabled IS DISTINCT FROM OLD.ledger_write_enabled))
+     AND current_user <> 'postgres' AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles r WHERE r.rolname=current_user AND r.rolsuper) THEN
+    RAISE EXCEPTION 'ledger write switch requires database administrator' USING ERRCODE='42501';
+  END IF;
+  RETURN NEW;
+END
+$switch$;
+REVOKE ALL ON FUNCTION public.guard_ledger_write_switch() FROM PUBLIC;
+CREATE TRIGGER shops_guard_ledger_write_switch BEFORE INSERT OR UPDATE OF ledger_write_enabled ON public.shops
+  FOR EACH ROW EXECUTE FUNCTION public.guard_ledger_write_switch();
+
 -- 구글 계정 식별자를 저장하지 않고도 사용자별 한도를 넘지 않게 모든 가게에 보수적인 공통 상한을 둔다.
 CREATE TABLE siljang_ledger_private.ledger_call_slots (started_at timestamptz NOT NULL);
 REVOKE ALL ON TABLE siljang_ledger_private.ledger_call_slots FROM PUBLIC;
@@ -2842,6 +2858,8 @@ REVOKE ALL ON TABLE siljang_ledger_private.ledger_call_slots FROM PUBLIC;
 CREATE FUNCTION siljang_ledger_private.guard_ledger_write(p_shop uuid,p_link uuid,p_write uuid,p_lease timestamptz,p_file text,p_tab text)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
 BEGIN
+  PERFORM 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled FOR SHARE;
+  IF NOT FOUND THEN RETURN false; END IF;
   IF p_lease IS NULL OR p_lease<=pg_catalog.statement_timestamp() THEN RETURN false; END IF;
   -- 개인정보 삭제와 전송은 주문 잠금으로 직렬화한다. 삭제가 먼저 끝났으면 전송하지 않는다.
   PERFORM o.id FROM public.ledger_writes w JOIN public.ledger_rows r ON r.shop_id=w.shop_id AND r.id=w.ledger_row_id
@@ -2862,6 +2880,8 @@ CREATE FUNCTION siljang_ledger_private.save_ledger_checkpoint(p_shop uuid,p_writ
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
 DECLARE saved uuid; r jsonb;
 BEGIN
+  PERFORM 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled FOR SHARE;
+  IF NOT FOUND THEN RETURN false; END IF;
   IF p_checkpoint IS NULL OR pg_catalog.jsonb_typeof(p_checkpoint)<>'object' OR pg_catalog.octet_length(p_checkpoint::text)>1500000 THEN RETURN false; END IF;
   IF p_checkpoint-ARRAY['scope','keyVersion','sentDigest','rows','unidentifiedRows','conflicted','affectedOrderIds'] <> '{}'::jsonb
      OR coalesce(p_checkpoint->>'keyVersion','') !~ '^[A-Za-z0-9_-]{43}$' OR coalesce(p_checkpoint->>'scope','') !~ '^[A-Za-z0-9_-]{43}$' OR coalesce(p_checkpoint->>'sentDigest','') !~ '^[A-Za-z0-9_-]{43}$'
@@ -2914,6 +2934,8 @@ RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,envelope text,ord
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
 DECLARE v_order uuid; v_number text; v_link public.ledger_links%ROWTYPE; v_envelope text;
 BEGIN
+  PERFORM 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled FOR SHARE;
+  IF NOT FOUND THEN RETURN; END IF;
   SELECT o.id,o.order_no INTO v_order,v_number FROM public.owner_tasks t
     JOIN public.orders o ON o.shop_id=t.shop_id AND o.id=t.order_id
     JOIN public.shops s ON s.id=t.shop_id AND s.owner_id=p_owner
@@ -2937,6 +2959,8 @@ CREATE FUNCTION siljang_ledger_private.confirm_ledger_order(p_shop uuid,p_owner 
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
 DECLARE v_order uuid; v_row uuid;
 BEGIN
+  PERFORM 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled FOR SHARE;
+  IF NOT FOUND THEN RETURN false; END IF;
   IF coalesce(p_target,'') !~ '^[A-Za-z0-9_-]{43}$' OR coalesce(p_key_version,'') !~ '^[A-Za-z0-9_-]{43}$'
     OR NOT ((p_event IS NULL AND p_hash IS NULL) OR (coalesce(p_event,'') ~ '^[0-9a-f]{32}$' AND coalesce(p_hash,'') ~ '^[A-Za-z0-9_-]{43}$')) THEN RETURN false; END IF;
   SELECT o.id INTO v_order FROM public.owner_tasks t JOIN public.orders o ON o.shop_id=t.shop_id AND o.id=t.order_id
@@ -2973,6 +2997,8 @@ RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,row_values jsonb,
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
 DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb; v_uncertain boolean; v_audit boolean; v_in_flight boolean; v_hash text; v_hashes jsonb; v_checkpoint jsonb; v_key_version text; v_confirmed text;
 BEGIN
+  PERFORM 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled FOR SHARE;
+  IF NOT FOUND THEN RETURN; END IF;
   IF p_lease IS NULL OR p_lease<=pg_catalog.statement_timestamp() OR p_lease>pg_catalog.statement_timestamp()+interval '5 minutes' THEN RETURN; END IF;
   SELECT w.ledger_row_id,w.write_uncertain,(w.status='written'),w.write_in_flight,w.checkpoint_hashes INTO v_order,v_uncertain,v_audit,v_in_flight,v_checkpoint FROM public.ledger_writes w
     WHERE w.shop_id=p_shop AND w.id=p_write AND ((w.status IN ('pending','retrying','alerted') AND w.next_attempt_at<=pg_catalog.statement_timestamp()) OR (w.status='written' AND w.audit_due_at<=pg_catalog.statement_timestamp())) FOR UPDATE;
@@ -3052,6 +3078,8 @@ CREATE FUNCTION siljang_ledger_private.finish_ledger_write(p_shop uuid,p_write u
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
 DECLARE v_link uuid; v_row uuid; v_order uuid; v_attempts int; v_failed timestamptz; v_alerted timestamptz; v_task uuid; v_delay interval; v_audit boolean; v_deadline timestamptz; v_checks integer; v_affected uuid; v_purged timestamptz;
 BEGIN
+  PERFORM 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled FOR SHARE;
+  IF NOT FOUND THEN RETURN false; END IF;
   IF p_result NOT IN ('written','retry','auth_lost','uncertain','duplicate','conflict','audit_ok','audit_duplicate','audit_missing','audit_retry') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
   IF p_result='written' AND p_columns IS NOT NULL AND p_columns ? 'sheetHash' AND (p_columns->>'sheetHash') !~ '^[A-Za-z0-9_-]{43}$' THEN RETURN false; END IF;
   IF p_result='written' AND p_columns ? 'keyVersion' AND (p_columns->>'keyVersion') !~ '^[A-Za-z0-9_-]{43}$' THEN RETURN false; END IF;
@@ -3332,6 +3360,7 @@ COMMENT ON COLUMN shops.booking_slug IS '예약 링크(TERM-042) 주소의 가�
 COMMENT ON COLUMN shops.booking_issued_at IS '예약 링크를 낸 시각';
 COMMENT ON COLUMN shops.created_at IS '등록한 시각';
 COMMENT ON COLUMN shops.updated_at IS '마지막으로 고친 시각';
+COMMENT ON COLUMN shops.ledger_write_enabled IS '관리자만 켜는 장부 쓰기 허용 여부';
 COMMENT ON COLUMN kakao_channels.id IS '채널 연결 ID';
 COMMENT ON COLUMN kakao_channels.shop_id IS '채널을 묶은 가게';
 COMMENT ON COLUMN kakao_channels.bot_id IS '오픈빌더 설정의 기본 봇 ID. 수신 값의 끝 느낌표 하나를 제거한 뒤 가게를 찾음(SPEC-017, 06 DEC-28)';

@@ -7,6 +7,7 @@ BEGIN
   SELECT l.credential_ref INTO v_ref FROM public.ledger_links l
     JOIN public.ledger_writes w ON w.shop_id=l.shop_id
     WHERE l.shop_id=p_shop AND l.id=p_link AND l.status IN ('linked','auth_lost')
+      AND EXISTS (SELECT 1 FROM public.shops s WHERE s.id=p_shop AND s.ledger_write_enabled)
       AND l.write_lease_id=p_write AND l.write_lease_until=p_lease
       AND w.id=p_write AND ((w.status IN ('pending','retrying','alerted') AND w.next_attempt_at=p_lease) OR (w.status='written' AND w.audit_due_at=p_lease));
   IF NOT FOUND OR pg_catalog.to_regclass('vault.decrypted_secrets') IS NULL THEN RETURN NULL; END IF;

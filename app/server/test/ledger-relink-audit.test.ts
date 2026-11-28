@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { TEST_DATABASE_URL } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
-import { createShop } from "./support/shops";
+import { createLedgerShop as createShop } from "./support/ledger-shop";
 
 it.skipIf(!TEST_DATABASE_URL).each(["scheduled", "pending"])(
   "파일 교체 시 기존 파일 사후 확인 %s을 폐기한다",
