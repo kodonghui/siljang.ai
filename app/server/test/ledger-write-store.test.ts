@@ -807,6 +807,47 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
           )
         ).rowCount,
       ).toBe(0);
+      // 키 교체만으로는 옛 서명을 신뢰하거나 시트에 덮어쓰지 않는다.
+      const rotated = readSettings({
+        APP_ENV: "development",
+        REQUEST_HASH_KEY: `rotated-${crypto.randomUUID()}`,
+        GOOGLE_CLIENT_ID: "test-client",
+        GOOGLE_CLIENT_SECRET: "test-secret",
+        GOOGLE_LEDGER_REDIRECT_URIS: "https://test.example/callback",
+      });
+      const next = crypto.randomUUID();
+      await isolated.db.query(
+        "INSERT INTO ledger_writes(id,shop_id,ledger_row_id,event_key,event_kind,next_attempt_at) VALUES($1,$2,$3,$4,'changed',now()-interval '1 second')",
+        [next, shop.shopId, row, `ledger:${next}:changed`],
+      );
+      await runDueJobs({
+        db,
+        now: new Date(),
+        jobs: [
+          {
+            name: "ledger_write",
+            every: "minute",
+            sources: ["ledger_write"],
+            handler: ledgerWriteJob(rotated, createServices({}, rotated, { fieldCrypto: fields }), () =>
+              roleConnection(isolated.connect(), role),
+            ),
+          },
+        ],
+        log: () => {},
+      });
+      expect(writes).toBe(2);
+      expect(
+        (await isolated.db.query<{ status: string }>("SELECT status FROM ledger_writes WHERE id=$1", [next])).rows[0]
+          ?.status,
+      ).toBe("unlinked");
+      expect(
+        (
+          await isolated.db.query(
+            "SELECT id FROM owner_tasks WHERE shop_id=$1 AND event_key=$2 AND closed_at IS NULL",
+            [shop.shopId, `task:ledger_conflict:${shop.orderId}`],
+          )
+        ).rowCount,
+      ).toBe(1);
     } finally {
       await db.close();
       vi.unstubAllGlobals();

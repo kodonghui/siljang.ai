@@ -578,3 +578,19 @@ it("비교 기준을 저장하는 동안 대상 행이 바뀌면 쓰기 직전�
   ).rejects.toThrow();
   expect(writes).toBe(0);
 });
+it("불확실 쓰기와 대상 중복이 겹쳐도 먼저 다른 주문의 소실을 알린다", async () => {
+  const oldTarget = prior("ABC123", orderId),
+    other = prior("XYZ789", otherId);
+  const sent = [...input.values, eventId.replaceAll("-", ""), orderId.replaceAll("-", "")];
+  const checkpoint = await buildLedgerCheckpoint(
+    input.hashKey,
+    { file, tab: input.tab, eventId, orderId },
+    [oldTarget, other],
+    sent,
+  );
+  const send = async () => Response.json({ values: [["header"], sent, sent] });
+  await expect(writeLedgerSheet({ ...input, uncertain: true, checkpoint }, { fetch: send })).rejects.toMatchObject({
+    name: "LedgerConflictError",
+    affectedOrderIds: [otherId],
+  });
+});

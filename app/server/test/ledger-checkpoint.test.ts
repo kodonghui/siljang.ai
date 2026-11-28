@@ -33,8 +33,10 @@ it.skipIf(!TEST_DATABASE_URL)("쓰기 전 비교 기준은 임대와 연결에 �
     ]);
     const checkpoint = {
       scope: "A".repeat(43),
+      keyVersion: "K".repeat(43),
       sentDigest: "B".repeat(43),
       rows: [],
+      unidentifiedRows: false,
       conflicted: false,
       affectedOrderIds: [],
     };
@@ -201,7 +203,7 @@ it.skipIf(!TEST_DATABASE_URL)("다른 주문의 행 충돌은 해당 주문에 �
     await isolated.close();
   }
 });
-it.skipIf(!TEST_DATABASE_URL)("행 서명은 파일·탭과 기록 ID별로 보관한다", async () => {
+it.skipIf(!TEST_DATABASE_URL)("행 서명은 주문당 최신 파일·탭과 기록 ID만 보관한다", async () => {
   const isolated = await isolatedTestDb();
   try {
     const shop = await createShop(isolated.db, "대상별 서명"),
@@ -279,7 +281,7 @@ it.skipIf(!TEST_DATABASE_URL)("행 서명은 파일·탭과 기록 ID별로 보�
         [shop.shopId, third, lease],
       )
     ).rows[0]?.expected_hashes;
-    expect(returned?.[key]?.[write.replaceAll("-", "")]).toBe(sig);
+    expect(returned?.[key]).toBeUndefined();
     expect(returned?.[keyB]?.[second.replaceAll("-", "")]).toBe(sigB);
   } finally {
     await isolated.close();
@@ -396,8 +398,10 @@ it.skipIf(!TEST_DATABASE_URL)(
       const lease = new Date(Date.now() + 120000),
         checkpoint = {
           scope: "A".repeat(43),
+          keyVersion: "K".repeat(43),
           sentDigest: "B".repeat(43),
           rows: [],
+          unidentifiedRows: false,
           conflicted: false,
           affectedOrderIds: [],
         };

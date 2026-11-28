@@ -46,7 +46,7 @@ SQL
     printf '\n'
   done
   # public 백업에는 이행된 열이 이미 있으므로 0058의 비공개 표와 함수 정의만 복구한다.
-  awk 'found { print } /^-- 구글 계정 식별자/ { found=1; print }' "$root/db/migrations/0058_ledger_write_lease.sql"
+  awk '/^-- 주문 개인정보 삭제와 동시에/ { exit } found { print } /^-- 구글 계정 식별자/ { found=1; print }' "$root/db/migrations/0058_ledger_write_lease.sql"
   # 복구 대상의 기본 역할 권한도 원래 0049 원칙으로 닫는다.
   cat "$root/db/migrations/0049_revoke_supabase_definer_execute.sql"
   cat <<'SQL'

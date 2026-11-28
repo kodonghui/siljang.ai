@@ -9,8 +9,10 @@ export interface LedgerCheckpointRow {
 }
 export interface LedgerCheckpoint {
   readonly scope: string;
+  readonly keyVersion: string;
   readonly sentDigest: string;
   readonly rows: readonly LedgerCheckpointRow[];
+  readonly unidentifiedRows: boolean;
   readonly conflicted: boolean;
   readonly affectedOrderIds: readonly string[];
 }
@@ -48,7 +50,7 @@ async function hashedRows(
 ): Promise<LedgerCheckpointRow[]> {
   const entries = rows.flatMap((row) => {
     const key = keyOf(row);
-    return key === null ? [] : [{ key, row }];
+    return key === null || orderId(row) === null ? [] : [{ key, row }];
   });
   return Promise.all(
     entries.map(async ({ key, row }) => ({
@@ -62,11 +64,19 @@ function valid(value: unknown): value is LedgerCheckpoint {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   const v = value as Record<string, unknown>;
   if (
-    Object.keys(v).some((k) => !["scope", "sentDigest", "rows", "conflicted", "affectedOrderIds"].includes(k)) ||
+    Object.keys(v).some(
+      (k) =>
+        !["scope", "keyVersion", "sentDigest", "rows", "unidentifiedRows", "conflicted", "affectedOrderIds"].includes(
+          k,
+        ),
+    ) ||
     typeof v.scope !== "string" ||
     !HASH.test(v.scope) ||
+    typeof v.keyVersion !== "string" ||
+    !HASH.test(v.keyVersion) ||
     typeof v.sentDigest !== "string" ||
     !HASH.test(v.sentDigest) ||
+    typeof v.unidentifiedRows !== "boolean" ||
     typeof v.conflicted !== "boolean" ||
     !Array.isArray(v.rows) ||
     v.rows.length > 5000 ||
@@ -84,7 +94,8 @@ function valid(value: unknown): value is LedgerCheckpoint {
       HASH.test(row.key) &&
       typeof row.digest === "string" &&
       HASH.test(row.digest) &&
-      (row.orderId === null || (typeof row.orderId === "string" && UUID.test(row.orderId)))
+      typeof row.orderId === "string" &&
+      UUID.test(row.orderId)
     );
   });
 }
@@ -99,8 +110,10 @@ export async function buildLedgerCheckpoint(
   const scope = await sign(["ledger-scope-v1", context.file, context.tab, context.eventId, context.orderId]);
   return {
     scope,
+    keyVersion: await sign(["ledger-key-version-v1"]),
     sentDigest: await sign(["ledger-row-v1", sent]),
     rows: await hashedRows(sign, before, scope),
+    unidentifiedRows: before.some((row) => keyOf(row) !== null && orderId(row) === null),
     conflicted: false,
     affectedOrderIds: [],
   };
@@ -114,6 +127,9 @@ export async function compareLedgerCheckpoint(
 ): Promise<{ changed: boolean; affectedOrderIds: string[]; rows: LedgerCheckpointRow[] }> {
   if (!valid(checkpoint)) throw new Error("invalid ledger checkpoint");
   const sign = await signer(secret);
+  if (checkpoint.unidentifiedRows || current.some((row) => keyOf(row) !== null && orderId(row) === null))
+    throw new Error("unidentified ledger row");
+  if (checkpoint.keyVersion !== (await sign(["ledger-key-version-v1"]))) throw new Error("ledger key version changed");
   if (
     checkpoint.scope !== (await sign(["ledger-scope-v1", context.file, context.tab, context.eventId, context.orderId]))
   )

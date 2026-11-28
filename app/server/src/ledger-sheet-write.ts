@@ -114,6 +114,7 @@ export async function writeLedgerSheet(
     readonly eventId: string;
     readonly orderId: string;
     readonly uncertain?: boolean;
+    readonly resumeApproved?: boolean;
     readonly hashKey: Secret;
     readonly expectedDigest?: string | null;
     readonly expectedDigests?: Readonly<Record<string, string>>;
@@ -288,7 +289,6 @@ export async function writeLedgerSheet(
     const context = { file: input.file, tab: input.tab, eventId: input.eventId, orderId: input.orderId };
     const matches = current.flatMap((row, index) => (row[0] === input.values[0] ? [index] : []));
     const idMatches = current.flatMap((row, index) => (row[13] === orderId ? [index] : []));
-    if (matches.length > 1 || idMatches.length > 1) throw new LedgerDuplicateError();
     if (saved) {
       const alreadySent = current.some((row) => row[12] === eventId && row[13] === orderId);
       let comparison: Awaited<ReturnType<typeof compareLedgerCheckpoint>>;
@@ -301,6 +301,7 @@ export async function writeLedgerSheet(
         throw new LedgerConflictError("comparison baseline changed", [
           ...new Set([...saved.affectedOrderIds, ...comparison.affectedOrderIds]),
         ]);
+      if (matches.length > 1 || idMatches.length > 1) throw new LedgerDuplicateError();
       if (alreadySent) {
         const found = current.find((row) => row[12] === eventId && row[13] === orderId);
         if (!found || (await ledgerRowDigest(input.hashKey, found)) !== saved.sentDigest)
@@ -309,6 +310,7 @@ export async function writeLedgerSheet(
         return;
       }
     }
+    if (matches.length > 1 || idMatches.length > 1) throw new LedgerDuplicateError();
     const before = current,
       prior = indexed(before),
       target = matches[0];
@@ -317,7 +319,7 @@ export async function writeLedgerSheet(
       const old = current[target];
       if (!old || old[13] !== orderId) throw new LedgerConflictError("order ID changed");
       const expected = input.expectedDigests ? input.expectedDigests[String(old[12])] : input.expectedDigest;
-      if (!expected || (await ledgerRowDigest(input.hashKey, old)) !== expected)
+      if (!input.resumeApproved && (!expected || (await ledgerRowDigest(input.hashKey, old)) !== expected))
         throw new LedgerConflictError("target edited");
     } else if (prior.has(`id:${orderId}`)) throw new LedgerConflictError("order number changed");
     const checkpoint = input.saveCheckpoint

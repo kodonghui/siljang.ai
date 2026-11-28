@@ -1506,6 +1506,7 @@
           "03h7y0179n9e4e4gq6bltm8u5",
           "03h7y0179n9e4e4gq6d8q0oeo",
           "03h7y0179n9e4e4gq6esyn8q5",
+          "03hbjcaqyl6tpljg3ogd5nkqc",
           "03hbiu3y515nu7h8wq2r5rlg5",
           "03hbj1ehq6uriqsoixkizyrre",
           "03h7y0179n9e4e4gq6i0rlxu9",
@@ -1535,6 +1536,8 @@
           "03h7y0179n9e4e4gq76xddo3y",
           "03h7y0179n9e4e4gq78tdcqia",
           "03hbi287uo9odf05ami3cte2z",
+          "03hbjcaqyw5e95slp1rzhyb4u",
+          "03hbjcaqzcg3zq03s89kznt3e",
           "03hbi5x8xgjqr7lxniv9bnxoc",
           "03hbi287v4pz8yr8jwggvyxaq",
           "03hbi287vfoxmd9fbgbg3ldan",
@@ -6949,6 +6952,14 @@
         "default": "'{}'::jsonb",
         "options": 8
       },
+      "03hbjcaqyl6tpljg3ogd5nkqc": {
+        "id": "03hbjcaqyl6tpljg3ogd5nkqc",
+        "tableId": "03h7y0179n9e4e4gq69098pnw",
+        "name": "sheet_key_version",
+        "comment": "장부 서명의 HMAC 키 버전",
+        "dataType": "text",
+        "options": 0
+      },
       "03h7y0179n9e4e4gq6n72rqhb": {
         "id": "03h7y0179n9e4e4gq6n72rqhb",
         "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
@@ -7107,6 +7118,24 @@
         "comment": "쓰기 전 장부 행의 HMAC 비교 기준",
         "dataType": "jsonb",
         "options": 0
+      },
+      "03hbjcaqyw5e95slp1rzhyb4u": {
+        "id": "03hbjcaqyw5e95slp1rzhyb4u",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "resume_approved",
+        "comment": "확인 후 재개 허용",
+        "dataType": "boolean",
+        "default": "false",
+        "options": 8
+      },
+      "03hbjcaqzcg3zq03s89kznt3e": {
+        "id": "03hbjcaqzcg3zq03s89kznt3e",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "resume_needs_audit",
+        "comment": "재개 뒤 중복 확인 필요",
+        "dataType": "boolean",
+        "default": "false",
+        "options": 8
       },
       "03h7y0179n9e4e4gq7cgnw2ol": {
         "id": "03h7y0179n9e4e4gq7cgnw2ol",

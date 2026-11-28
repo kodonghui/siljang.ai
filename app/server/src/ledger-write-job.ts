@@ -26,6 +26,8 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
         expected_hash: string | null;
         expected_hashes: Record<string, Record<string, string>>;
         checkpoint_hashes: LedgerCheckpoint | null;
+        resume_approved: boolean;
+        sheet_key_version: string | null;
       }>("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [item.id, ctx.leaseUntil]);
       const row = result.rows[0];
       if (!row) return null;
@@ -41,6 +43,8 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
       return {
         leaseUntil: ctx.leaseUntil,
         checkpoint: row.checkpoint_hashes,
+        resumeApproved: row.resume_approved,
+        signatureVersion: row.sheet_key_version,
         expectedDigests: row.expected_hashes?.[targetKey] ?? {},
         shopId: db.scope.shopId,
         eventId: item.id,
@@ -69,6 +73,13 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
       if (settings.ledgerOAuth === null) throw new Error("ledger OAuth is not configured");
       const key = settings.secrets.REQUEST_HASH_KEY;
       if (key === null) throw new Error("ledger key is not configured");
+      const keyVersion = await ledgerRowDigest(key, ["ledger-key-version-v1"]);
+      if (
+        !row.resumeApproved &&
+        ((row.expectedDigest && row.signatureVersion !== keyVersion) ||
+          (row.checkpoint && row.checkpoint.keyVersion !== keyVersion))
+      )
+        return { status: row.auditing ? "audit_retry" : "conflict" };
       const deadline = AbortSignal.timeout(15000);
       const bounded = guardedLedgerFetch(guard, deadline);
       const access = await googleLedgerRefresh(settings.ledgerOAuth, credential, { fetch: bounded });
@@ -88,6 +99,7 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
         uncertain: row.uncertain,
         hashKey: key,
         expectedDigest: row.expectedDigest ?? null,
+        resumeApproved: row.resumeApproved ?? false,
         expectedDigests: row.expectedDigests ?? {},
         checkpoint: row.checkpoint ?? null,
         saveCheckpoint: async (checkpoint: import("./ledger-sheet-write").LedgerCheckpoint) => {
@@ -137,6 +149,7 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
           movedRight: setup.movedRight,
           ownershipToken: setup.ownershipToken,
           sheetHash,
+          keyVersion,
           targetKey: await ledgerRowDigest(key, ["ledger-target", row.file, row.tab]),
         },
       };

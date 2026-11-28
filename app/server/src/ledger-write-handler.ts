@@ -4,6 +4,8 @@ import type { Secret } from "./settings";
 import type { ShopDb } from "./shop-scope";
 
 export interface LedgerWriteSnapshot {
+  readonly resumeApproved?: boolean;
+  readonly signatureVersion?: string | null;
   readonly shopId: string;
   readonly eventId: string;
   readonly orderId: string;
@@ -26,6 +28,7 @@ type Result =
         readonly movedRight: boolean;
         readonly ownershipToken: string;
         readonly sheetHash?: string;
+        readonly keyVersion?: string;
         readonly targetKey?: string;
       };
     }
