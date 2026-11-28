@@ -307,6 +307,13 @@ describe("classify(G7)", () => {
     expect(classify(400, null, null).retry).toBe("none");
   });
 
+  it("구글 장부 오류는 같은 인가 코드를 재전송하지 않고 권한 요청을 다시 안내한다", () => {
+    const result = classify(503, problem("google_unavailable"), null);
+    expect(result.retry).toBe("none");
+    expect(result.message).toContain("구글 권한부터 다시");
+    expect(ERROR_CODES.sheet_not_accessible.message).toContain("구글 연결을 다시");
+  });
+
   it("화면에 오지 않는 코드(스킬 키)는 일반 서버 실패", () => {
     const f = classify(401, problem("skill_key_invalid"), null);
     expect(f).toMatchObject({ outcome: "server", retry: "none", message: ERROR_CODES.internal.message });

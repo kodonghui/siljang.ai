@@ -214,6 +214,16 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
     expect(await service.connect(f.access, shop, file, tab)).toMatchObject({ start: 26, end: 38 });
     expect(f.writes).toHaveLength(1);
   });
+  it("헤더 생성 후 확인 조회가 실패하면 새 인가 뒤 기존 서명 열을 재사용한다", async () => {
+    const f = fixture();
+    const service = ledgerSheetSetup(f.key, { fetch: f.send });
+    f.corruptReadback = true;
+    await expect(service.connect(f.access, shop, file, tab)).rejects.toBeInstanceOf(GoogleLedgerUnavailableError);
+    expect(f.writes).toHaveLength(1);
+    f.corruptReadback = false;
+    expect(await service.connect(f.access, shop, file, tab)).toMatchObject({ start: 26, end: 38 });
+    expect(f.writes).toHaveLength(1);
+  });
   it.each([400, 401, 403, 404])("헤더 쓰기 HTTP%s는 연결하지 않는다", async (status) => {
     const f = fixture();
     f.writeStatus = status;
