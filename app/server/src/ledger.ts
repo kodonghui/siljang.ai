@@ -141,6 +141,12 @@ export async function linkLedger(r: ShopRequest): Promise<Response> {
       if (state === null) throw new ApiError("google_authorization_failed");
       const fields = r.services.fieldCrypto();
       const sheets = r.services.ledgerSetup();
+      const vault = (
+        await db.run<{ ready: boolean }>(
+          "SELECT siljang_ledger_private.ledger_vault_ready() AS ready WHERE $1::uuid IS NOT NULL",
+        )
+      ).rows[0];
+      if (!vault?.ready) throw new Error("ledger vault is unavailable");
       let credential: GoogleLedgerCredential | null;
       let setup: LedgerSheetSetup | null;
       try {

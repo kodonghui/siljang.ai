@@ -199,16 +199,48 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     const fields = testFieldCrypto(new Map([[1, newFieldKey()]]), 1);
     const overrides = {
       fieldCrypto: fields,
-      ledgerAuthorization: { start: async () => { throw new Error("unused"); }, verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }) },
-      ledgerGoogle: { authorizeUrl: () => "", exchange: async () => { exchanges += 1; return null; } },
+      ledgerAuthorization: {
+        start: async () => {
+          throw new Error("unused");
+        },
+        verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }),
+      },
+      ledgerGoogle: {
+        authorizeUrl: () => "",
+        exchange: async () => {
+          exchanges += 1;
+          return null;
+        },
+      },
       ledgerSetup: { connect: async () => null },
     } as unknown as ServiceOverrides;
     await isolated.db.query("ALTER SCHEMA vault RENAME TO vault_unavailable");
     try {
-      const response = await app(true, false, overrides).request(PATH, { method: "PUT", headers: { cookie, Origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": `ledger-${newUuid()}` }, body: JSON.stringify({ baseRevision: null, code: "fixture-code", state: "fixture-state-123456789", spreadsheetId: SHEET, sheetName: "주문 장부" }) }, testEnv());
+      const response = await app(true, false, overrides).request(
+        PATH,
+        {
+          method: "PUT",
+          headers: {
+            cookie,
+            Origin: "https://siljang.example",
+            "content-type": "application/json",
+            "Idempotency-Key": `ledger-${newUuid()}`,
+          },
+          body: JSON.stringify({
+            baseRevision: null,
+            code: "fixture-code",
+            state: "fixture-state-123456789",
+            spreadsheetId: SHEET,
+            sheetName: "주문 장부",
+          }),
+        },
+        testEnv(),
+      );
       expect(response.status).toBe(500);
       expect(exchanges).toBe(0);
-    } finally { await isolated.db.query("ALTER SCHEMA vault_unavailable RENAME TO vault"); }
+    } finally {
+      await isolated.db.query("ALTER SCHEMA vault_unavailable RENAME TO vault");
+    }
   });
   it("암호화 키가 없으면 구글 인가 코드를 쓰지 않는다", async () => {
     let exchanges = 0;

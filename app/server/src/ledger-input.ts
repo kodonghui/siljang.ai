@@ -49,11 +49,14 @@ export function parseLedgerAuthorization(raw: unknown): LedgerAuthorizationInput
 }
 export function parseLedgerLink(raw: unknown): LedgerLinkInput {
   const input = object(raw, ["baseRevision", "code", "state", "spreadsheetId", "sheetName"]);
+  const sheetName = text(input, "sheetName", 1, 100);
+  if ([...sheetName].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127))
+    throw fieldError("/sheetName", "bad_format");
   return {
     baseRevision: input.baseRevision === null ? null : text(input, "baseRevision", 1, 64, /^[A-Za-z0-9._-]+$/),
     code: text(input, "code", 1, 2048, /^\S+$/),
     state: text(input, "state", 16, 512, /^[A-Za-z0-9._-]+$/),
     spreadsheetId: text(input, "spreadsheetId", 20, 100, /^[A-Za-z0-9_-]+$/),
-    sheetName: text(input, "sheetName", 1, 100),
+    sheetName,
   };
 }

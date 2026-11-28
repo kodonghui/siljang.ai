@@ -254,3 +254,4 @@ GRANT USAGE ON SCHEMA siljang_ledger_private TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.store_ledger_credential(uuid,uuid,uuid,text) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.create_owner_ledger(uuid,uuid,uuid,text,text,jsonb,text,timestamptz) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.lock_owner_ledger(uuid,uuid,text) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.ledger_vault_ready() TO :"runtime_role";
