@@ -144,7 +144,8 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
   it("Vault 저장 함수는 해당 가게의 암호문만 저장한다", async () => {
     const id = await link("linked");
     const encrypted = `v1:${"A".repeat(64)}`;
-    const result = await isolated.db.query<{ ok: boolean }>(
+    const runtime = roleConnection(isolated.connect(), role);
+    const result = await runtime.query<{ ok: boolean }>(
       "SELECT private.store_ledger_credential($1,$2,$3,$4) AS ok",
       [shop.shopId, shop.ownerId, id, encrypted],
     );
@@ -155,7 +156,8 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
       [shop.shopId, foreign.ownerId, id, encrypted],
     );
     expect(denied.rows[0]?.ok).toBe(false);
-    await expect(roleConnection(isolated.connect(), role).query("SELECT * FROM vault.secrets")).rejects.toThrow();
+    await expect(runtime.query("SELECT * FROM vault.secrets")).rejects.toThrow();
+    await runtime.close();
     const found = await isolated.db.query<{ secret: string }>(
       "SELECT secret FROM vault.secrets WHERE secret IS NOT NULL",
     );
