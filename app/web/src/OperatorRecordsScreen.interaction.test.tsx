@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
@@ -398,4 +398,352 @@ it("다섯 줄을 넘는 대화 글은 더 보기로 펼친다", async () => {
   if (more) fireEvent.click(more);
   expect(screen.getByRole("button", { name: "접기" })).toBeTruthy();
   vi.restoreAllMocks();
+});
+
+it("상세 조회를 취소하면 목록을 다시 조작할 수 있다", async () => {
+  let finish!: (v: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      url.includes("/orders/")
+        ? new Promise<Response>((resolve) => {
+            finish = resolve;
+          })
+        : Promise.resolve(json(list)),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /K7Q3M9/ }));
+  fireEvent.click(screen.getByRole("button", { name: "목록으로 돌아가기" }));
+  expect((screen.getByRole("button", { name: "상담" }) as HTMLButtonElement).disabled).toBe(false);
+  await act(async () => finish(json(order)));
+  expect(screen.queryByText(/주문번호 K7Q3M9/)).toBeNull();
+});
+it("페이지 이탈과 복원 시 열린 원문과 사유를 즉시 지운다", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(json(url.includes("/originals") ? original : url.includes("/orders/") ? order : list)),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /K7Q3M9/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "주문자 원래 값 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 기록 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  await screen.findByText("이지우");
+  act(() => window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true })));
+  expect(screen.queryByText("이지우")).toBeNull();
+  expect(screen.queryByText(/손님 문의 기록 확인/)).toBeNull();
+  act(() => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })));
+  expect(screen.queryByText("이지우")).toBeNull();
+});
+it("상세 조회 오류의 재시도는 같은 주문을 다시 조회한다", async () => {
+  let attempts = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(url.includes("/orders/") ? (++attempts === 1 ? json({}, 404) : json(order)) : json(list)),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /K7Q3M9/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "다시 시도" }));
+  expect(await screen.findByRole("button", { name: "주문자 원래 값 열기" })).toBeTruthy();
+  expect(attempts).toBe(2);
+});
+it("목록에 주문 픽업과 보관 종료 시각, 상담 식별 정보를 보여 준다", async () => {
+  const consultations = sample("/operator/shops/{shopId}/records", "consultations");
+  consultations.consultations[0].orderNos = ["K7Q3M9"];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => Promise.resolve(json(url.includes("kind=consultations") ? consultations : list))),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  const first = await screen.findByRole("button", { name: /K7Q3M9/ });
+  expect(first.textContent).toContain("픽업");
+  expect(screen.getByRole("button", { name: /H2W6Y1/ }).textContent).toContain("끝남");
+  fireEvent.click(screen.getByRole("button", { name: "상담" }));
+  expect((await screen.findByRole("button", { name: /K7Q3M9/ })).textContent).toContain("가린 번호 2");
+});
+it("원문 이름은 상태 코드와 같아도 변환하지 않는다", async () => {
+  const value = structuredClone(original);
+  value.orderContact.customerName = "paid";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(json(url.includes("/originals") ? value : url.includes("/orders/") ? order : list)),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /K7Q3M9/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "주문자 원래 값 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 기록 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  expect(await screen.findByText("paid")).toBeTruthy();
+});
+it("원문을 두지 않는 번호는 오류 뒤 다시 열 수 없다", async () => {
+  const consultation = sample("/operator/shops/{shopId}/consultations/{consultationId}", "consultation");
+  const consultations = sample("/operator/shops/{shopId}/records", "consultations");
+  const problem =
+    api.paths["/operator/shops/{shopId}/originals"].post.responses[409].content["application/problem+json"].examples
+      .original_not_kept.value;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(
+        url.includes("/originals")
+          ? json(problem, 409)
+          : json(url.includes("/consultations/") ? consultation : consultations),
+      ),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/consultations/${consultation.consultationId}`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "원래 값 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 번호 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.queryByRole("button", { name: "원래 값 열기" })).toBeNull();
+});
+it("삭제된 대화 글은 삭제 상태로 바꾸고 다시 열지 않는다", async () => {
+  const consultation = sample("/operator/shops/{shopId}/consultations/{consultationId}", "consultation");
+  const consultations = sample("/operator/shops/{shopId}/records", "consultations");
+  const problem =
+    api.paths["/operator/shops/{shopId}/originals"].post.responses[409].content["application/problem+json"].examples
+      .original_erased.value;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(
+        url.includes("/originals")
+          ? json(problem, 409)
+          : json(url.includes("/consultations/") ? consultation : consultations),
+      ),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/consultations/${consultation.consultationId}`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "대화 글 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 내용 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  expect(await screen.findByText("보관 기간 30일이 지나 대화를 지웠어요")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "대화 글 열기" })).toBeNull();
+});
+it("만료된 대화 페이지 증표는 현재 페이지를 다시 불러온다", async () => {
+  const consultation = sample("/operator/shops/{shopId}/consultations/{consultationId}", "consultation");
+  const consultations = sample("/operator/shops/{shopId}/records", "consultations");
+  const problem = structuredClone(
+    api.paths["/operator/shops/{shopId}/originals"].post.responses[422].content["application/problem+json"].examples
+      .validation_failed.value,
+  );
+  problem.errors = [{ field: "/cursor", code: "bad_format" }];
+  const fetch = vi.fn((url: string) =>
+    Promise.resolve(
+      url.includes("/originals")
+        ? json(problem, 422)
+        : json(url.includes("/consultations/") ? consultation : consultations),
+    ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/consultations/${consultation.consultationId}`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "대화 글 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 내용 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  fireEvent.click(await screen.findByRole("button", { name: "대화 페이지 다시 불러오기" }));
+  await screen.findByRole("button", { name: "대화 글 열기" });
+  expect(fetch.mock.calls.filter(([url]) => url.includes("/consultations/")).length).toBe(2);
+});
+it("추가 목록 조회 실패는 같은 커서로 다시 시도한다", async () => {
+  const first = structuredClone(list);
+  first.nextCursor = "next_cursor";
+  let attempts = 0;
+  const next = structuredClone(list);
+  next.orders = [next.orders[1]];
+  next.nextCursor = null;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(
+        url.includes("cursor=next_cursor") ? (++attempts === 1 ? json({}, 500) : json(next)) : json(first),
+      ),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "더 보기" }));
+  fireEvent.click(await screen.findByRole("button", { name: "다시 시도" }));
+  await waitFor(() => expect(attempts).toBe(2));
+  expect(screen.getByRole("button", { name: /K7Q3M9/ })).toBeTruthy();
+});
+it("지워진 원문의 404는 목록으로 돌아가 같은 대상을 다시 열지 않는다", async () => {
+  const problem =
+    api.paths["/operator/shops/{shopId}/originals"].post.responses[404].content["application/problem+json"].examples
+      .not_found.value;
+  const fetch = vi.fn((url: string) =>
+    Promise.resolve(url.includes("/originals") ? json(problem, 404) : json(url.includes("/orders/") ? order : list)),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /K7Q3M9/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "주문자 원래 값 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 기록 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(await screen.findByText("찾을 수 없어요")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "주문자 원래 값 열기" })).toBeNull();
+  await waitFor(() => expect(fetch.mock.calls.filter(([url]) => url.includes("/records?")).length).toBe(2));
+});
+it("원문을 연 주문이 보관 기록이 되면 갱신한 목록에서 보관 기록을 연다", async () => {
+  const problem =
+    api.paths["/operator/shops/{shopId}/originals"].post.responses[409].content["application/problem+json"].examples
+      .original_erased.value;
+  let requests = 0;
+  const after = structuredClone(list);
+  after.orders = [after.orders[1]];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(
+        url.includes("/originals")
+          ? json(problem, 409)
+          : json(url.includes("/orders/") ? order : ++requests === 1 ? list : after),
+      ),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /K7Q3M9/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "주문자 원래 값 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 기록 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  await waitFor(() => expect(requests).toBe(2));
+  fireEvent.click(await screen.findByRole("button", { name: /H2W6Y1/ }));
+  expect(screen.getByRole("button", { name: "보관 기록 열기" })).toBeTruthy();
+});
+it("페이지 이탈 중 원문 요청의 늦은 결과를 버린다", async () => {
+  let resolveOpen!: (response: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      url.includes("/originals")
+        ? new Promise<Response>((resolve) => {
+            resolveOpen = resolve;
+          })
+        : Promise.resolve(json(url.includes("/orders/") ? order : list)),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /K7Q3M9/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "주문자 원래 값 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 기록 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  act(() => window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true })));
+  await act(async () => resolveOpen(json(original)));
+  expect(screen.queryByText("이지우")).toBeNull();
+  expect(screen.queryByRole("dialog")).toBeNull();
 });

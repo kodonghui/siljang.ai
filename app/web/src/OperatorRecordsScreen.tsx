@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useLocation } from "react-router";
 import { type ApiFailure, newRequestKey } from "./api";
 import {
@@ -10,7 +11,7 @@ import {
   openOperatorOriginal,
 } from "./operator-records-api";
 import { classify } from "./problems";
-import type { Navigate } from "./ui";
+import { type Navigate, Skeleton } from "./ui";
 import { keepFocusInside } from "./ui/focus";
 import "./operator-records.css";
 
@@ -44,6 +45,10 @@ const names: Record<string, string> = {
   customer: "손님",
   ai: "AI",
   system: "시스템",
+  text: "글",
+  photo: "사진",
+  card: "카드",
+  unsupported: "지원하지 않는 메시지",
   phone: "전화번호",
   account: "계좌번호",
   full: "전액",
@@ -68,7 +73,27 @@ function display(value: unknown): string {
   }
   return typeof value === "number" ? value.toLocaleString("ko-KR") : text(value);
 }
-function Value({ value }: { readonly value: unknown }) {
+const formattedFields = new Set([
+  "status",
+  "kind",
+  "cause",
+  "decision",
+  "author",
+  "at",
+  "createdAt",
+  "pickupAt",
+  "finishedAt",
+  "contractKeepUntil",
+  "issueKeepUntil",
+  "issuePurgedAt",
+  "issuedAt",
+  "paidAt",
+  "decidedAt",
+  "sentAt",
+  "amount",
+  "version",
+]);
+function Value({ value, field }: { readonly value: unknown; readonly field?: string }) {
   if (Array.isArray(value))
     return (
       <ul>
@@ -88,13 +113,17 @@ function Value({ value }: { readonly value: unknown }) {
             <div key={key}>
               <dt>{labels[key] ?? key}</dt>
               <dd>
-                {key === "textMasked" && typeof item === "string" ? <LongText value={item} /> : <Value value={item} />}
+                {key === "textMasked" && typeof item === "string" ? (
+                  <LongText value={item} />
+                ) : (
+                  <Value value={item} field={key} />
+                )}
               </dd>
             </div>
           ))}
       </dl>
     );
-  return <>{display(value)}</>;
+  return <>{field && formattedFields.has(field) ? display(value) : text(value)}</>;
 }
 function LongText({ value }: { readonly value: string }) {
   const ref = useRef<HTMLParagraphElement>(null);
@@ -193,6 +222,13 @@ export function OperatorRecordsScreen({
   const [selected, setSelected] = useState<Data | null>(null),
     [target, setTarget] = useState<Target | null>(null),
     [reason, setReason] = useState("");
+  const [notice, setNotice] = useState("");
+  const [unavailable, setUnavailable] = useState<Record<string, string>>({});
+  const [detailCursor, setDetailCursor] = useState<string | undefined>();
+  const suppressDirect = useRef(false);
+  const [retry, setRetry] = useState<
+    { type: "list"; cursor?: string } | { type: "detail"; row: Data; kind: OperatorRecordKind; cursor?: string } | null
+  >(null);
   const [opened, setOpened] = useState<Data | null>(null),
     [failure, setFailure] = useState<ApiFailure | null>(null);
   const [busy, setBusy] = useState(false),
@@ -212,12 +248,14 @@ export function OperatorRecordsScreen({
     controller.current?.abort();
     controller.current = null;
     lock.current = false;
+    setLoading(false);
+    setBusy(false);
     setOpened(null);
     setTarget(null);
     setReason("");
   }, []);
   const failed = useCallback(
-    (result: ApiFailure) => {
+    (result: ApiFailure, keepList = false) => {
       if (result.status === 401) {
         clear();
         setList(null);
@@ -226,9 +264,9 @@ export function OperatorRecordsScreen({
         onSessionExpired();
       } else {
         if (result.status >= 500 || result.status === 0) {
-          setList(null);
+          if (!keepList) setList(null);
           setDetail(null);
-          setSelected(null);
+          if (!keepList) setSelected(null);
           setOpened(null);
         }
         setFailure(result);
@@ -248,7 +286,8 @@ export function OperatorRecordsScreen({
         const result = await fetchOperatorRecords(shopId, kind, cursor, request.signal);
         if (request.signal.aborted) return;
         if (!result.ok) {
-          failed(result);
+          failed(result, !!cursor);
+          if (result.status !== 401) setRetry({ type: "list", ...(cursor ? { cursor } : {}) });
           return false;
         } else {
           setList((old) =>
@@ -260,6 +299,7 @@ export function OperatorRecordsScreen({
                 }
               : result.data,
           );
+          setRetry(null);
           if (!cursor) setAt(Date.now());
           return true;
         }
@@ -294,8 +334,15 @@ export function OperatorRecordsScreen({
             ? await fetchOperatorOrder(shopId, id, request.signal)
             : await fetchOperatorConsultation(shopId, id, pageCursor, request.signal);
         if (request.signal.aborted) return;
-        if (result.ok) setDetail(result.data);
-        else failed(result);
+        if (result.ok) {
+          setRetry(null);
+          setDetailCursor(pageCursor);
+          setDetail(result.data);
+        } else {
+          failed(result, true);
+          if (result.status !== 401)
+            setRetry({ type: "detail", row, kind: directKind, ...(pageCursor ? { cursor: pageCursor } : {}) });
+        }
       } catch (error) {
         if (!request.signal.aborted) throw error;
       } finally {
@@ -323,7 +370,7 @@ export function OperatorRecordsScreen({
         const parts = path.split("/");
         const type = parts[4],
           id = parts[5];
-        if (id && type === kind && (type === "orders" || type === "consultations"))
+        if (!suppressDirect.current && id && type === kind && (type === "orders" || type === "consultations"))
           await choose(
             type === "orders" ? { orderId: id } : { consultationId: id },
             type,
@@ -342,6 +389,18 @@ export function OperatorRecordsScreen({
       lock.current = false;
     };
   }, [load, revision, path, choose, kind, invalidQuery, cursor]);
+  useEffect(() => {
+    const hide = () => flushSync(() => clear());
+    const restore = (event: PageTransitionEvent) => {
+      if (event.persisted) flushSync(() => clear());
+    };
+    window.addEventListener("pagehide", hide);
+    window.addEventListener("pageshow", restore);
+    return () => {
+      window.removeEventListener("pagehide", hide);
+      window.removeEventListener("pageshow", restore);
+    };
+  }, [clear]);
   const modal = useRef<HTMLDialogElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -373,8 +432,20 @@ export function OperatorRecordsScreen({
         request.signal,
       );
       if (request.signal.aborted) return;
-      if (result.ok) setDetail(result.data);
-      else failed(result);
+      if (result.ok) {
+        setDetailCursor(detail.nextCursor as string);
+        setRetry(null);
+        setDetail(result.data);
+      } else {
+        failed(result, true);
+        if (result.status !== 401)
+          setRetry({
+            type: "detail",
+            row: { consultationId: detail.consultationId },
+            kind: "consultations",
+            cursor: detail.nextCursor as string,
+          });
+      }
     } catch (error) {
       if (!request.signal.aborted) throw error;
     } finally {
@@ -388,6 +459,8 @@ export function OperatorRecordsScreen({
   function show(next: Target) {
     clear();
     setFailure(null);
+    if (unavailable[`${next.kind}:${next.id}`]) return;
+    setNotice("");
     setTarget(next);
   }
   async function submit() {
@@ -428,7 +501,31 @@ export function OperatorRecordsScreen({
           if (request.signal.aborted) return;
           continue;
         }
-        failed(result);
+        const code = result.problem?.code;
+        if (result.status === 404 || code === "original_erased" || code === "original_not_kept") {
+          const label =
+            code === "original_not_kept"
+              ? "원래 값을 두지 않아요"
+              : code === "original_erased"
+                ? "지워진 값이에요"
+                : "찾을 수 없어요";
+          setNotice(label);
+          setUnavailable((old) => ({ ...old, [`${target.kind}:${target.id}`]: label }));
+          if (code === "original_erased" && target.kind === "consultation_text") {
+            setDetail((old) =>
+              old
+                ? { ...old, status: "deleted", items: [], maskedValues: [], nextCursor: null, textCursor: null }
+                : null,
+            );
+          } else if (result.status === 404 || (code === "original_erased" && target.kind === "order_contact")) {
+            suppressDirect.current = true;
+            setSelected(null);
+            setDetail(null);
+            setRevision((n) => n + 1);
+          }
+          clear();
+          setFailure(null);
+        } else failed(result);
         break;
       }
     } catch (error) {
@@ -477,10 +574,18 @@ export function OperatorRecordsScreen({
           </button>
         </p>
       ) : null}
+      {notice ? <div role="alert">{notice}</div> : null}
       {error ? (
         <div role="alert">
           {error.message} {failure?.problem?.traceId ? `추적 ID: ${failure.problem.traceId}` : ""}{" "}
-          <button type="button" onClick={() => setRevision((n) => n + 1)}>
+          <button
+            type="button"
+            onClick={() => {
+              if (retry?.type === "list") void load(retry.cursor);
+              else if (retry?.type === "detail") void choose(retry.row, retry.kind, retry.cursor);
+              else setRevision((n) => n + 1);
+            }}
+          >
             다시 시도
           </button>
         </div>
@@ -518,15 +623,33 @@ export function OperatorRecordsScreen({
       <div className={`operator-records-columns${selected ? " has-selection" : ""}`}>
         <div>
           <h2>{kind === "orders" ? "주문" : "상담"} 목록</h2>
-          {loading ? <p>불러오고 있어요</p> : null}
+          {loading ? <Skeleton /> : null}
           {list && !source.length ? <p>조건에 맞는 기록이 없어요</p> : null}
           <ul>
             {source.map((row) => (
               <li key={text(row.orderId ?? row.consultationId)}>
                 <button type="button" disabled={disabled} onClick={() => void choose(row)}>
-                  {text(row.orderNo ?? row.startedAt)} · {row.kept ? "보관 기록" : display(row.status)}{" "}
-                  {row.kept ? display(row.contractKeepUntil) : text(row.customerNameMasked)}{" "}
-                  {text(row.customerPhoneMasked)}
+                  {kind === "orders" ? (
+                    <>
+                      {text(row.orderNo)} ·{" "}
+                      {row.kept ? (
+                        <>
+                          보관 기록 · {display(row.finishedAt)} 끝남 · {display(row.contractKeepUntil)}까지 보관
+                        </>
+                      ) : (
+                        <>
+                          {display(row.status)} · {display(row.pickupAt)} 픽업 · {text(row.customerNameMasked)} ·{" "}
+                          {text(row.customerPhoneMasked)}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {display(row.status)} · 시작 {display(row.startedAt)} · 마지막 {display(row.lastMessageAt)} · 주문{" "}
+                      {Array.isArray(row.orderNos) && row.orderNos.length ? row.orderNos.join(", ") : "없음"} · 가린
+                      번호 {display(row.maskedValueCount)}개
+                    </>
+                  )}
                 </button>
               </li>
             ))}
@@ -550,22 +673,27 @@ export function OperatorRecordsScreen({
             목록으로 돌아가기
           </button>
           <h2>기록 상세</h2>
+          {loading && selected ? <Skeleton label="기록을 불러오고 있어요" /> : null}
           {selected?.kept ? (
             <>
               <p>보관 기록 {text(selected.orderNo)}</p>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() =>
-                  show({
-                    kind: "kept_record",
-                    id: text(selected.keptRecordId),
-                    label: `보관 기록 ${text(selected.orderNo)}`,
-                  })
-                }
-              >
-                보관 기록 열기
-              </button>
+              {unavailable[`kept_record:${text(selected.keptRecordId)}`] ? (
+                <p>{unavailable[`kept_record:${text(selected.keptRecordId)}`]}</p>
+              ) : (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() =>
+                    show({
+                      kind: "kept_record",
+                      id: text(selected.keptRecordId),
+                      label: `보관 기록 ${text(selected.orderNo)}`,
+                    })
+                  }
+                >
+                  보관 기록 열기
+                </button>
+              )}
             </>
           ) : null}
           {detail && kind === "orders" ? (
@@ -579,13 +707,19 @@ export function OperatorRecordsScreen({
               <p>
                 주문자 {text(detail.customerNameMasked)} · {text(detail.customerPhoneMasked)}
               </p>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => show({ kind: "order_contact", id: text(detail.orderId), label: "주문자 이름과 연락처" })}
-              >
-                주문자 원래 값 열기
-              </button>
+              {unavailable[`order_contact:${text(detail.orderId)}`] ? (
+                <p>{unavailable[`order_contact:${text(detail.orderId)}`]}</p>
+              ) : (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() =>
+                    show({ kind: "order_contact", id: text(detail.orderId), label: "주문자 이름과 연락처" })
+                  }
+                >
+                  주문자 원래 값 열기
+                </button>
+              )}
               <p>
                 알레르기 {detail.allergyAnswered ? "답 있음" : "답 없음"} · 빼야 할 재료{" "}
                 {detail.excludedIngredientsAnswered ? "답 있음" : "답 없음"} · 사진 {text(detail.referencePhotoCount)}장
@@ -596,7 +730,9 @@ export function OperatorRecordsScreen({
               {rows(detail.refunds).map((refund) => (
                 <div key={text(refund.refundId)}>
                   <Value value={refund} />
-                  {refund.refundAccount ? (
+                  {unavailable[`refund_account:${text(refund.refundId)}`] ? (
+                    <p>{unavailable[`refund_account:${text(refund.refundId)}`]}</p>
+                  ) : refund.refundAccount ? (
                     <button
                       type="button"
                       disabled={disabled}
@@ -614,25 +750,29 @@ export function OperatorRecordsScreen({
               <p>보관 기간 30일이 지나 대화를 지웠어요</p>
             ) : (
               <>
-                <button
-                  type="button"
-                  disabled={disabled || typeof detail.textCursor !== "string"}
-                  onClick={() =>
-                    show({
-                      kind: "consultation_text",
-                      id: text(detail.consultationId),
-                      label: "이 상담의 대화 글(보고 있는 페이지)",
-                      cursor: text(detail.textCursor),
-                    })
-                  }
-                >
-                  대화 글 열기
-                </button>
+                {unavailable[`consultation_text:${text(detail.consultationId)}`] ? (
+                  <p>{unavailable[`consultation_text:${text(detail.consultationId)}`]}</p>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={disabled || typeof detail.textCursor !== "string"}
+                    onClick={() =>
+                      show({
+                        kind: "consultation_text",
+                        id: text(detail.consultationId),
+                        label: "이 상담의 대화 글(보고 있는 페이지)",
+                        cursor: text(detail.textCursor),
+                      })
+                    }
+                  >
+                    대화 글 열기
+                  </button>
+                )}
                 <ul>
                   {rows(detail.items).map((item) => (
                     <li key={text(item.messageId)}>
-                      {display(item.author)} · {display(item.at)} · 글 {text(item.textLength)}자 · 사진{" "}
-                      {text(item.photoCount)}장
+                      {display(item.author)} · {display(item.at)} · {display(item.kind)} · 글 {text(item.textLength)}자
+                      · 사진 {text(item.photoCount)}장
                     </li>
                   ))}
                 </ul>
@@ -645,7 +785,9 @@ export function OperatorRecordsScreen({
                   {rows(detail.maskedValues).map((value) => (
                     <li key={text(value.maskedValueId)}>
                       {text(value.placeholder)} …{text(value.last4)}{" "}
-                      {value.originalKept ? (
+                      {unavailable[`masked_value:${text(value.maskedValueId)}`] ? (
+                        unavailable[`masked_value:${text(value.maskedValueId)}`]
+                      ) : value.originalKept ? (
                         <button
                           type="button"
                           disabled={disabled}
@@ -719,6 +861,20 @@ export function OperatorRecordsScreen({
                 />
                 <p>{[...reason].length}/200</p>
                 {error ? <p role="alert">{error.message}</p> : null}
+                {target.kind === "consultation_text" &&
+                failure?.problem?.code === "validation_failed" &&
+                failure.problem.errors.some((entry) => entry.field === "/cursor") ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = target.id;
+                      clear();
+                      void choose({ consultationId: id }, "consultations", detailCursor);
+                    }}
+                  >
+                    대화 페이지 다시 불러오기
+                  </button>
+                ) : null}
                 <div className="operator-records-actions">
                   <button type="button" disabled={busy} onClick={clear}>
                     돌아가기
