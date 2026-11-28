@@ -6,6 +6,7 @@ import { GoogleLedgerUnavailableError } from "../src/ledger-google-auth";
 import { LEDGER_COOKIE, verifyLedgerOAuth } from "../src/ledger-oauth";
 import { OWNER_COOKIE, readCookie } from "../src/owner-oauth";
 import { createOwnerSession } from "../src/owner-session";
+import { requestHash } from "../src/request-key";
 import type { ServiceOverrides } from "../src/services";
 import { Secret } from "../src/settings";
 import { toShopIso } from "../src/time";
@@ -478,6 +479,20 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
         "plaintext-token",
       ]),
     ).rejects.toThrow();
+  });
+  it("같은 장부 해제 요청이 진행 중이면 409를 반환한다", async () => {
+    const key = `ledger-${newUuid()}`;
+    const hash = await requestHash(new Secret(TEST_HASH_KEY), "API-036", [], null);
+    await isolated.db.query(
+      "INSERT INTO request_keys(actor_kind,actor_id,request_key,command,request_hash,state,processing_expires_at) VALUES('owner',$1,$2,'API-036',$3,'processing',clock_timestamp()+interval '1 minute')",
+      [shop.ownerId, key, hash],
+    );
+    const response = await app(true).request(
+      PATH,
+      { method: "DELETE", headers: { cookie, Origin: "https://siljang.example", "Idempotency-Key": key } },
+      testEnv(),
+    );
+    await expectProblem(response, "request_in_progress");
   });
   it("연결 해제의 세션·대상·요청 키·서버 오류는 계약대로 닫힌다", async () => {
     const send = (ownerCookie: string, key?: string, fault = false) =>
