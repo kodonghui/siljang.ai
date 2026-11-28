@@ -145,6 +145,11 @@ describeDb("TASK-037 가게 설정 부분 저장", () => {
     ]);
     expect((await h.get()).settingsSummary).toMatchObject({ kakaoChannelStatus: "failed" });
   });
+  it("복구로 장부 토큰이 없으면 설정 카드도 재연결 상태를 보여준다", async () => {
+    const h = await fixture();
+    await db.query("INSERT INTO ledger_links (shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref) VALUES ($1,'synthetic-sheet','합성 장부','{}','missing-credential')", [h.shop.shopId]);
+    expect((await h.get()).settingsSummary).toMatchObject({ ledgerStatus: "auth_lost" });
+  });
   it("다른 가게의 버전과 장부 연결이 이 가게의 설정 카드에 섞이지 않음", async () => {
     const h = await fixture();
     const other = await createShop(db, "다른 설정 합성 가게");
