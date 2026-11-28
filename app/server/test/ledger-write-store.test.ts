@@ -157,6 +157,48 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
       (await isolated.db.query("SELECT id FROM owner_alerts WHERE shop_id=$1 AND kind='ledger_failing'", [shop.shopId]))
         .rowCount,
     ).toBe(1);
+    await isolated.db.query("UPDATE ledger_writes SET next_attempt_at=now()-interval '1 minute' WHERE id=$1", [second]);
+    expect((await claim(second)).rowCount).toBe(1);
+    await isolated.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,$4,$5,NULL)", [
+      shop.shopId,
+      second,
+      lease,
+      "written",
+      new Date(),
+    ]);
+    expect(
+      (
+        await isolated.db.query<{ failure_alerted_at: Date | null }>(
+          "SELECT failure_alerted_at FROM ledger_links WHERE id=$1",
+          [link],
+        )
+      ).rows[0]?.failure_alerted_at,
+    ).toBeNull();
+    const third = crypto.randomUUID();
+    await isolated.db.query(
+      "INSERT INTO ledger_writes(id,shop_id,ledger_row_id,event_key,event_kind,next_attempt_at) VALUES($1,$2,$3,$4,'changed',now())",
+      [third, shop.shopId, row, `ledger:${third}:changed`],
+    );
+    expect((await claim(third)).rowCount).toBe(1);
+    await isolated.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,$4,$5,NULL)", [
+      shop.shopId,
+      third,
+      lease,
+      "auth_lost",
+      new Date(),
+    ]);
+    expect(
+      (await isolated.db.query("SELECT id FROM owner_alerts WHERE shop_id=$1 AND kind='ledger_failing'", [shop.shopId]))
+        .rowCount,
+    ).toBe(2);
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT id FROM owner_tasks WHERE shop_id=$1 AND kind='ledger_relink' AND closed_at IS NULL",
+          [shop.shopId],
+        )
+      ).rowCount,
+    ).toBe(1);
   });
   it("24시간 경계보다 늦게 재시도하지 않아 지속 실패 알림을 놓치지 않는다", async () => {
     const shop = await createShop(isolated.db, "합성 장부 24시간"),

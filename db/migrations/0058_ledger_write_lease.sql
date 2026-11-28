@@ -69,6 +69,7 @@ BEGIN
     UPDATE public.ledger_links SET status='linked',our_columns=coalesce(p_columns,our_columns) WHERE shop_id=p_shop AND id=v_link;
     IF NOT EXISTS (SELECT 1 FROM public.ledger_writes WHERE shop_id=p_shop AND status<>'written') THEN
       UPDATE public.owner_tasks SET closed_at=p_now WHERE shop_id=p_shop AND event_key='task:ledger_relink:'||v_link::text AND closed_at IS NULL;
+      UPDATE public.ledger_links SET failure_alerted_at=NULL WHERE shop_id=p_shop AND id=v_link;
     END IF;
   ELSE
     v_failed:=coalesce(v_failed,p_now);
@@ -79,9 +80,9 @@ BEGIN
         THEN p_now+interval '1 day' ELSE least(p_now+v_delay,v_failed+interval '24 hours') END WHERE shop_id=p_shop AND id=p_write;
     IF (p_result='auth_lost' OR p_now>=v_failed+interval '24 hours') AND v_alerted IS NULL THEN
       INSERT INTO public.owner_tasks(shop_id,kind,event_key,opened_at) VALUES(p_shop,'ledger_relink','task:ledger_relink:'||v_link::text,p_now)
-        ON CONFLICT(shop_id,event_key) DO UPDATE SET event_key=excluded.event_key RETURNING id INTO v_task;
+        ON CONFLICT(shop_id,event_key) DO UPDATE SET closed_at=NULL,opened_at=excluded.opened_at RETURNING id INTO v_task;
       INSERT INTO public.owner_alerts(shop_id,kind,event_key,owner_task_id,next_attempt_at,created_at)
-        VALUES(p_shop,'ledger_failing','alert:ledger_failing:'||v_link::text,v_task,p_now,p_now) ON CONFLICT(shop_id,event_key) DO NOTHING;
+        VALUES(p_shop,'ledger_failing','alert:ledger_failing:'||p_write::text,v_task,p_now,p_now) ON CONFLICT(shop_id,event_key) DO NOTHING;
       UPDATE public.ledger_links SET failure_alerted_at=p_now WHERE shop_id=p_shop AND id=v_link;
     END IF;
     IF p_result='auth_lost' THEN UPDATE public.ledger_links SET status='auth_lost' WHERE shop_id=p_shop AND id=v_link; END IF;
