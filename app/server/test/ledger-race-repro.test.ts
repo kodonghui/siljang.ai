@@ -594,3 +594,36 @@ it("불확실 쓰기와 대상 중복이 겹쳐도 먼저 다른 주문의 소�
     affectedOrderIds: [otherId],
   });
 });
+it("ID 없는 옛 행과 중복이 있어도 비교 기준의 다른 피해 주문을 알려 준다", async () => {
+  const target = prior("ABC123", orderId),
+    other = prior("XYZ789", otherId),
+    old = ["OLD123", "옛 행"];
+  const sent = [...input.values, eventId.replaceAll("-", ""), orderId.replaceAll("-", "")];
+  const checkpoint = await buildLedgerCheckpoint(
+    input.hashKey,
+    { file, tab: input.tab, eventId, orderId },
+    [target, other, old],
+    sent,
+  );
+  const send = async () => Response.json({ values: [["header"], sent, sent, old] });
+  await expect(writeLedgerSheet({ ...input, uncertain: true, checkpoint }, { fetch: send })).rejects.toMatchObject({
+    name: "LedgerConflictError",
+    affectedOrderIds: [otherId],
+  });
+});
+it("읽을 수 없는 비교 기준이라도 이미 남긴 피해 주문은 알려 준다", async () => {
+  const sent = [...input.values, eventId.replaceAll("-", ""), orderId.replaceAll("-", "")];
+  const checkpoint = await buildLedgerCheckpoint(
+    new Secret("old-key"),
+    { file, tab: input.tab, eventId, orderId },
+    [],
+    sent,
+  );
+  const send = async () => Response.json({ values: [["header"], sent] });
+  await expect(
+    writeLedgerSheet(
+      { ...input, uncertain: true, checkpoint: { ...checkpoint, conflicted: true, affectedOrderIds: [otherId] } },
+      { fetch: send },
+    ),
+  ).rejects.toMatchObject({ name: "LedgerConflictError", affectedOrderIds: [otherId] });
+});

@@ -79,7 +79,9 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
         ((row.expectedDigest && row.signatureVersion !== keyVersion) ||
           (row.checkpoint && row.checkpoint.keyVersion !== keyVersion))
       )
-        return { status: row.auditing ? "audit_retry" : "conflict" };
+        return row.auditing
+          ? { status: "audit_retry" }
+          : { status: "conflict", affectedOrderIds: row.checkpoint?.affectedOrderIds ?? [] };
       const deadline = AbortSignal.timeout(15000);
       const bounded = guardedLedgerFetch(guard, deadline);
       const access = await googleLedgerRefresh(settings.ledgerOAuth, credential, { fetch: bounded });

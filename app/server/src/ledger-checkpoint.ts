@@ -127,8 +127,6 @@ export async function compareLedgerCheckpoint(
 ): Promise<{ changed: boolean; affectedOrderIds: string[]; rows: LedgerCheckpointRow[] }> {
   if (!valid(checkpoint)) throw new Error("invalid ledger checkpoint");
   const sign = await signer(secret);
-  if (checkpoint.unidentifiedRows || current.some((row) => keyOf(row) !== null && orderId(row) === null))
-    throw new Error("unidentified ledger row");
   if (checkpoint.keyVersion !== (await sign(["ledger-key-version-v1"]))) throw new Error("ledger key version changed");
   if (
     checkpoint.scope !== (await sign(["ledger-scope-v1", context.file, context.tab, context.eventId, context.orderId]))
@@ -146,7 +144,7 @@ export async function compareLedgerCheckpoint(
       group[side].push(row);
       groups.set(row.key, group);
     }
-  let changed = false;
+  let changed = checkpoint.unidentifiedRows || current.some((row) => keyOf(row) !== null && orderId(row) === null);
   const affected = new Set<string>();
   for (const group of groups.values()) {
     const before = group.before.map((r) => r.digest).sort(),

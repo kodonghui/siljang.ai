@@ -65,5 +65,5 @@ it("주문 ID 없는 옛 시트 행은 삭제된 주문일 수 있어 서명을 
   const checkpoint = await buildLedgerCheckpoint(key, context, [old], []);
   expect(checkpoint.rows).toEqual([]);
   expect(checkpoint).toHaveProperty("unidentifiedRows", true);
-  await expect(compareLedgerCheckpoint(key, context, checkpoint, [old])).rejects.toThrow(/unidentified/);
+  expect((await compareLedgerCheckpoint(key, context, checkpoint, [old])).changed).toBe(true);
 });

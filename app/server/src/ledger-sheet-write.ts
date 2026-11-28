@@ -295,7 +295,10 @@ export async function writeLedgerSheet(
       try {
         comparison = await compareLedgerCheckpoint(input.hashKey, context, saved, current, alreadySent);
       } catch {
-        throw new LedgerConflictError("invalid comparison baseline");
+        throw new LedgerConflictError(
+          "invalid comparison baseline",
+          Array.isArray(saved.affectedOrderIds) ? saved.affectedOrderIds.filter(isUuid) : [],
+        );
       }
       if (saved.conflicted || comparison.changed)
         throw new LedgerConflictError("comparison baseline changed", [
