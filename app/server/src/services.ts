@@ -17,6 +17,8 @@ import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { type KakaoEvents, type KakaoOwnerEvents, kakaoEvents, kakaoOwnerEvents } from "./kakao-event";
 import { deriveKakaoProofPhrase, deriveKakaoSkillKey } from "./kakao-skill-auth";
 import { type LedgerAuthorizationService, ledgerAuthorizationService } from "./ledger-authorization";
+import { type GoogleLedgerOAuth, googleLedgerOAuth } from "./ledger-google-auth";
+import { ledgerSheetSetup } from "./ledger-sheet-setup";
 import { type OperatorAuth, supabaseAuth } from "./operator-auth";
 import { kakaoOwnerAuth, type OwnerAuth } from "./owner-auth";
 import { type ImageBinding, type PhotoNormalizer, photoNormalizer } from "./photo-normalizer";
@@ -56,6 +58,8 @@ export interface Services {
   operatorAuth(): OperatorAuth;
   ownerAuth(): OwnerAuth;
   ledgerAuthorization(): LedgerAuthorizationService;
+  ledgerGoogle(): GoogleLedgerOAuth;
+  ledgerSetup(): ReturnType<typeof ledgerSheetSetup>;
   /** ms 밀리초 기다린다(운영자 로그인 실패 응답의 최소 시간, operator-login.ts). */
   wait(ms: number): Promise<void>;
   readonly kakaoCallbackQueue: KakaoCallbackQueue | undefined;
@@ -77,6 +81,8 @@ export interface ServiceOverrides {
   readonly operatorAuth?: OperatorAuth;
   readonly ownerAuth?: OwnerAuth;
   readonly ledgerAuthorization?: LedgerAuthorizationService;
+  readonly ledgerGoogle?: GoogleLedgerOAuth;
+  readonly ledgerSetup?: ReturnType<typeof ledgerSheetSetup>;
   readonly wait?: (ms: number) => Promise<void>;
   readonly kakaoCallbackQueue?: KakaoCallbackQueue;
 }
@@ -102,6 +108,8 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
   let auth: OperatorAuth | undefined = overrides.operatorAuth;
   let ownerAuth: OwnerAuth | undefined = overrides.ownerAuth;
   let ledgerAuth: LedgerAuthorizationService | undefined = overrides.ledgerAuthorization;
+  let ledgerGoogle = overrides.ledgerGoogle;
+  let ledgerSetup = overrides.ledgerSetup;
   return {
     now: overrides.now ?? (() => new Date()),
     publicAppOrigin: overrides.publicAppOrigin === undefined ? settings.publicAppOrigin : overrides.publicAppOrigin,
@@ -192,6 +200,17 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
       if (settings.ledgerOAuth === null) throw new MissingSettingError("Google ledger settings are not set");
       ledgerAuth = ledgerAuthorizationService(channelSecret(), settings.ledgerOAuth);
       return ledgerAuth;
+    },
+    ledgerGoogle() {
+      if (ledgerGoogle !== undefined) return ledgerGoogle;
+      if (settings.ledgerOAuth === null) throw new MissingSettingError("Google ledger settings are not set");
+      ledgerGoogle = googleLedgerOAuth(settings.ledgerOAuth);
+      return ledgerGoogle;
+    },
+    ledgerSetup() {
+      if (ledgerSetup !== undefined) return ledgerSetup;
+      ledgerSetup = ledgerSheetSetup(channelSecret());
+      return ledgerSetup;
     },
     wait: overrides.wait ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
   };

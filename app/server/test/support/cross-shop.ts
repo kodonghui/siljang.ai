@@ -153,7 +153,7 @@ interface BookingCase {
 }
 
 interface LedgerShopCase {
-  readonly method: "GET" | "POST" | "DELETE";
+  readonly method: "GET" | "POST" | "PUT" | "DELETE";
   readonly path: "/owner/ledger" | "/owner/ledger/authorization";
   readonly kind: "ledger";
 }
@@ -185,6 +185,7 @@ export type CrossShopCase =
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "GET", path: "/owner/ledger", kind: "ledger" },
+  { method: "PUT", path: "/owner/ledger", kind: "ledger" },
   { method: "DELETE", path: "/owner/ledger", kind: "ledger" },
   { method: "POST", path: "/owner/ledger/authorization", kind: "ledger" },
   {
@@ -396,6 +397,39 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
             ),
           ).toBeNull();
         }
+        expect(await snapshots(db, env)).toEqual(before);
+        return;
+      }
+      if (c.method === "PUT") {
+        const own = await send(env, "GET", { url: c.path });
+        const revision = typeof own.body?.revision === "string" ? own.body.revision : null;
+        const before = await snapshots(db, env);
+        const config = testEnv({
+          GOOGLE_CLIENT_ID: `${newUuid()}.apps.googleusercontent.com`,
+          GOOGLE_CLIENT_SECRET: newUuid() + newUuid(),
+          GOOGLE_LEDGER_REDIRECT_URIS: "https://siljang.example/callback",
+        });
+        const response = await env.app.request(
+          `/api${c.path}?shopId=${env.b.shopId}`,
+          {
+            method: "PUT",
+            headers: {
+              ...env.as(env.a),
+              origin: "http://localhost",
+              "content-type": "application/json",
+              "Idempotency-Key": newRequestKey(),
+            },
+            body: JSON.stringify({
+              baseRevision: revision,
+              code: "fixture-code",
+              state: "fixture-state-123456789",
+              spreadsheetId: "fixture_sheet_123456789012345",
+              sheetName: "합성 탭",
+            }),
+          },
+          config,
+        );
+        expect(response.status).toBe(422);
         expect(await snapshots(db, env)).toEqual(before);
         return;
       }

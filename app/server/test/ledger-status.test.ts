@@ -2,15 +2,15 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { Queryable, RequestDb } from "../src/db";
-import type { ServiceOverrides } from "../src/services";
-import { newFieldKey, testFieldCrypto } from "./support/field-keys";
 import { LEDGER_COOKIE, verifyLedgerOAuth } from "../src/ledger-oauth";
 import { OWNER_COOKIE, readCookie } from "../src/owner-oauth";
 import { createOwnerSession } from "../src/owner-session";
+import type { ServiceOverrides } from "../src/services";
 import { Secret } from "../src/settings";
 import { toShopIso } from "../src/time";
 import { expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { newFieldKey, testFieldCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { seedOperatorSession } from "./support/operator";
 import { roleConnection } from "./support/purge-role";
@@ -148,39 +148,100 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     const fields = testFieldCrypto(new Map([[1, newFieldKey()]]), 1);
     const overrides = {
       fieldCrypto: fields,
-      ledgerAuthorization: { start: async () => { throw new Error("unused"); }, verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }) },
-      ledgerGoogle: { authorizeUrl: () => "", exchange: async () => ({ accessToken: new Secret("test-access"), refreshToken: new Secret(token), expiresAt: NOW }) },
-      ledgerSetup: { connect: async () => ({ sheetId: 1, start: 0, end: 1, movedRight: false, ownershipToken: "fixture-marker", columns: COLUMNS }) },
+      ledgerAuthorization: {
+        start: async () => {
+          throw new Error("unused");
+        },
+        verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }),
+      },
+      ledgerGoogle: {
+        authorizeUrl: () => "",
+        exchange: async () => ({
+          accessToken: new Secret("test-access"),
+          refreshToken: new Secret(token),
+          expiresAt: NOW,
+        }),
+      },
+      ledgerSetup: {
+        connect: async () => ({
+          sheetId: 1,
+          start: 0,
+          end: 1,
+          movedRight: false,
+          ownershipToken: "fixture-marker",
+          columns: COLUMNS,
+        }),
+      },
     } as unknown as ServiceOverrides;
-    const response = await app(true, false, overrides).request(PATH, { method: "PUT", headers: { cookie, Origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": `ledger-${newUuid()}` }, body: JSON.stringify({ baseRevision: null, code: "fixture-code", state: "fixture-state-123456789", spreadsheetId: SHEET, sheetName: "주문 장부" }) }, testEnv());
+    const response = await app(true, false, overrides).request(
+      PATH,
+      {
+        method: "PUT",
+        headers: {
+          cookie,
+          Origin: "https://siljang.example",
+          "content-type": "application/json",
+          "Idempotency-Key": `ledger-${newUuid()}`,
+        },
+        body: JSON.stringify({
+          baseRevision: null,
+          code: "fixture-code",
+          state: "fixture-state-123456789",
+          spreadsheetId: SHEET,
+          sheetName: "주문 장부",
+        }),
+      },
+      testEnv(),
+    );
     expect(response.status, await response.clone().text()).toBe(200);
     const text = await response.text();
     expect(text).not.toContain(token);
-    const rows = await isolated.db.query<{ id: string; secret: string }>("SELECT l.id,v.secret FROM ledger_links l JOIN vault.secrets v ON v.id::text=l.credential_ref WHERE l.shop_id=$1", [shop.shopId]);
+    const rows = await isolated.db.query<{ id: string; secret: string }>(
+      "SELECT l.id,v.secret FROM ledger_links l JOIN vault.secrets v ON v.id::text=l.credential_ref WHERE l.shop_id=$1",
+      [shop.shopId],
+    );
     expect(rows.rows).toHaveLength(1);
     const row = rows.rows[0];
-    expect(row?.secret).not.toContain(token);
-    expect(await fields.open(row?.secret ?? "", { purpose: "ledger_links.oauth_token", shopId: shop.shopId, recordId: row?.id })).toBe(token);
+    if (!row) throw new Error("저장된 장부 없음");
+    expect(row.secret).not.toContain(token);
+    expect(
+      await fields.open(row.secret, {
+        purpose: "ledger_links.oauth_token",
+        shopId: shop.shopId,
+        recordId: row.id,
+      }),
+    ).toBe(token);
   });
   it("장부 생성은 가게 소유를 검증하고 중복 연결을 막는다", async () => {
     const id = newUuid();
     const values = [shop.shopId, shop.ownerId, id, SHEET, "주문 장부", JSON.stringify({ columns: COLUMNS }), null, NOW];
-    const first = await isolated.db.query<{ outcome: string }>("SELECT * FROM private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)", values);
+    const first = await isolated.db.query<{ outcome: string }>(
+      "SELECT * FROM private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)",
+      values,
+    );
     expect(first.rows[0]?.outcome).toBe("created");
-    const duplicate = await isolated.db.query<{ outcome: string }>("SELECT * FROM private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)", [shop.shopId, shop.ownerId, newUuid(), ...values.slice(3)]);
+    const duplicate = await isolated.db.query<{ outcome: string }>(
+      "SELECT * FROM private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)",
+      [shop.shopId, shop.ownerId, newUuid(), ...values.slice(3)],
+    );
     expect(duplicate.rows[0]?.outcome).toBe("conflict");
     const other = await createShop(isolated.db, "다른 가게");
-    const denied = await isolated.db.query("SELECT * FROM private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)", [shop.shopId, other.ownerId, newUuid(), ...values.slice(3)]);
+    const denied = await isolated.db.query(
+      "SELECT * FROM private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)",
+      [shop.shopId, other.ownerId, newUuid(), ...values.slice(3)],
+    );
     expect(denied.rows).toHaveLength(0);
   });
   it("Vault 저장 함수는 해당 가게의 암호문만 저장한다", async () => {
     const id = await link("linked");
     const encrypted = `v1:${"A".repeat(64)}`;
     const runtime = roleConnection(isolated.connect(), role);
-    const result = await runtime.query<{ ok: boolean }>(
-      "SELECT private.store_ledger_credential($1,$2,$3,$4) AS ok",
-      [shop.shopId, shop.ownerId, id, encrypted],
-    );
+    const result = await runtime.query<{ ok: boolean }>("SELECT private.store_ledger_credential($1,$2,$3,$4) AS ok", [
+      shop.shopId,
+      shop.ownerId,
+      id,
+      encrypted,
+    ]);
     expect(result.rows[0]?.ok).toBe(true);
     const foreign = await createShop(isolated.db, "다른 가게");
     const denied = await isolated.db.query<{ ok: boolean }>(
@@ -191,7 +252,8 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     await expect(runtime.query("SELECT * FROM vault.secrets")).rejects.toThrow();
     await runtime.close();
     const found = await isolated.db.query<{ secret: string }>(
-      "SELECT secret FROM vault.secrets WHERE secret IS NOT NULL",
+      "SELECT v.secret FROM vault.secrets v JOIN ledger_links l ON v.id::text=l.credential_ref WHERE l.id=$1",
+      [id],
     );
     expect(found.rows).toEqual([{ secret: encrypted }]);
     await expect(

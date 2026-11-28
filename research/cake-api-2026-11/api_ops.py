@@ -707,7 +707,7 @@ op(id="API-079", method="post", path="/owner/kakao-channel/skill-key", op="regen
 # ═══ 장부 ═════════════════════════════════════════════════════════════════════
 op(id="API-033", method="get", path="/owner/ledger", op="getLedger", tag="장부",
    summary="장부 연결 상태", spec=["SPEC-009", "SPEC-064"], auth="owner",
-   desc="우리가 쓰는 열의 헤더와 자리, 실패가 이어진 때와 아직 못 적은 쓰기 수(SPEC-064). 구글 OAuth 토큰은 시크릿 저장소에만 있고 응답에 없다(REQ-135).",
+   desc="우리가 쓰는 열의 헤더와 자리, 실패가 이어진 때와 아직 못 적은 쓰기 수(SPEC-064). 구글 OAuth 토큰은 앱 키로 암호화해 Vault에 보관하며 응답에 없다(REQ-135). public 전용 백업 복구 등으로 토큰이 없으면 auth_lost를 반환해 다시 연결을 안내한다.",
    ok=[(200, "LedgerLink", {"linked": E.LEDGER, "auth_lost": E.LEDGER_FAILING, "unlinked": E.LEDGER_UNLINKED})],
    errors={404: ["shop_not_registered", "not_set"]},
    omit={"403": O403, "409": O409_READ, "422": O422_NOINPUT},

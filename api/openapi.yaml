@@ -6900,7 +6900,7 @@ paths:
       operationId: getLedger
       summary: 장부 연결 상태
       description: |-
-        우리가 쓰는 열의 헤더와 자리, 실패가 이어진 때와 아직 못 적은 쓰기 수(SPEC-064). 구글 OAuth 토큰은 시크릿 저장소에만 있고 응답에 없다(REQ-135).
+        우리가 쓰는 열의 헤더와 자리, 실패가 이어진 때와 아직 못 적은 쓰기 수(SPEC-064). 구글 OAuth 토큰은 앱 키로 암호화해 Vault에 보관하며 응답에 없다(REQ-135). public 전용 백업 복구 등으로 토큰이 없으면 auth_lost를 반환해 다시 연결을 안내한다.
 
         SPEC: SPEC-009, SPEC-064
       tags:

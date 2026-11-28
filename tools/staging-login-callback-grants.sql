@@ -253,3 +253,4 @@ GRANT EXECUTE ON FUNCTION read_owner_ledger(uuid,uuid,uuid),unlink_owner_ledger(
 GRANT USAGE ON SCHEMA private TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION private.store_ledger_credential(uuid,uuid,uuid,text) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION private.create_owner_ledger(uuid,uuid,uuid,text,text,jsonb,text,timestamptz) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION private.lock_owner_ledger(uuid,uuid,text) TO :"runtime_role";
