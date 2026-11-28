@@ -1,0 +1,1232 @@
+[
+  {
+    "width": 360,
+    "state": "list",
+    "pageCheck": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:4392/operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/records",
+      "viewport": {
+        "width": 360,
+        "height": 800,
+        "dpr": 1
+      },
+      "env": {
+        "reducedMotion": false,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "dimensions": {
+      "body": 360,
+      "viewport": 360,
+      "smallTargets": []
+    },
+    "errors": []
+  },
+  {
+    "width": 360,
+    "state": "detail",
+    "pageCheck": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:4392/operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/records",
+      "viewport": {
+        "width": 360,
+        "height": 800,
+        "dpr": 1
+      },
+      "env": {
+        "reducedMotion": false,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "dimensions": {
+      "body": 360,
+      "viewport": 360,
+      "smallTargets": []
+    },
+    "errors": []
+  },
+  {
+    "width": 360,
+    "state": "confirm",
+    "pageCheck": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:4392/operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/records",
+      "viewport": {
+        "width": 360,
+        "height": 800,
+        "dpr": 1
+      },
+      "env": {
+        "reducedMotion": false,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 21,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 21
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > header.ui-layout__head > div.ui-layout__titles > h1.ui-layout__title",
+          "text": "가게 기록 보기",
+          "need": 4.5,
+          "font": "17px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > p:nth-of-type(1)",
+          "text": "이 화면에서 본 것과 연 것은 접속기록에 남아요.",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > p:nth-of-type(2)",
+          "text": "오후 01:34 기준 새로 고침",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h2",
+          "text": "기록 상세",
+          "need": 4.5,
+          "font": "17.6px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(1)",
+          "text": "주문번호 K7Q3M9 · 확정",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(2)",
+          "text": "픽업 2026. 11. 20. 오후 2:00 · 금액 36,000원",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(3)",
+          "text": "주문자 이** · ***-****-5432",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(4)",
+          "text": "알레르기 답 있음 · 빼야 할 재료 답 없음 · 사진 0장",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h3:nth-of-type(1)",
+          "text": "결제 안내",
+          "need": 4.5,
+          "font": "15px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(1) > dt",
+          "text": "금액",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(1) > dd",
+          "text": "36,000",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(2) > dt",
+          "text": "안내 시각",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(2) > dd",
+          "text": "2026. 11. 12. 오후 1:05",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(3) > dt",
+          "text": "종류",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(3) > dd",
+          "text": "첫 결제",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(4) > dt",
+          "text": "입금 시각",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(4) > dd",
+          "text": "2026. 11. 12. 오후 2:02",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(5) > dt",
+          "text": "상태",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(5) > dd",
+          "text": "입금 확인",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h3:nth-of-type(2)",
+          "text": "환불",
+          "need": 4.5,
+          "font": "15px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > a",
+          "text": "영업 신고 확인 목록으로",
+          "need": 4.5,
+          "font": "15px 400"
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "dimensions": {
+      "body": 360,
+      "viewport": 360,
+      "smallTargets": []
+    },
+    "errors": []
+  },
+  {
+    "width": 360,
+    "state": "done",
+    "pageCheck": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:4392/operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/records",
+      "viewport": {
+        "width": 360,
+        "height": 800,
+        "dpr": 1
+      },
+      "env": {
+        "reducedMotion": false,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 21,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 21
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > header.ui-layout__head > div.ui-layout__titles > h1.ui-layout__title",
+          "text": "가게 기록 보기",
+          "need": 4.5,
+          "font": "17px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > p:nth-of-type(1)",
+          "text": "이 화면에서 본 것과 연 것은 접속기록에 남아요.",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > p:nth-of-type(2)",
+          "text": "오후 01:34 기준 새로 고침",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h2",
+          "text": "기록 상세",
+          "need": 4.5,
+          "font": "17.6px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(1)",
+          "text": "주문번호 K7Q3M9 · 확정",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(2)",
+          "text": "픽업 2026. 11. 20. 오후 2:00 · 금액 36,000원",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(3)",
+          "text": "주문자 이** · ***-****-5432",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(4)",
+          "text": "알레르기 답 있음 · 빼야 할 재료 답 없음 · 사진 0장",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h3:nth-of-type(1)",
+          "text": "결제 안내",
+          "need": 4.5,
+          "font": "15px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(1) > dt",
+          "text": "금액",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(1) > dd",
+          "text": "36,000",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(2) > dt",
+          "text": "안내 시각",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(2) > dd",
+          "text": "2026. 11. 12. 오후 1:05",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(3) > dt",
+          "text": "종류",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(3) > dd",
+          "text": "첫 결제",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(4) > dt",
+          "text": "입금 시각",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(4) > dd",
+          "text": "2026. 11. 12. 오후 2:02",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(5) > dt",
+          "text": "상태",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(5) > dd",
+          "text": "입금 확인",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h3:nth-of-type(2)",
+          "text": "환불",
+          "need": 4.5,
+          "font": "15px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > a",
+          "text": "영업 신고 확인 목록으로",
+          "need": 4.5,
+          "font": "15px 400"
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "dimensions": {
+      "body": 360,
+      "viewport": 360,
+      "smallTargets": []
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "state": "list",
+    "pageCheck": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:4392/operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/records",
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "env": {
+        "reducedMotion": false,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "dimensions": {
+      "body": 1280,
+      "viewport": 1280,
+      "smallTargets": []
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "state": "detail",
+    "pageCheck": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:4392/operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/records",
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "env": {
+        "reducedMotion": false,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "dimensions": {
+      "body": 1280,
+      "viewport": 1280,
+      "smallTargets": []
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "state": "confirm",
+    "pageCheck": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:4392/operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/records",
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "env": {
+        "reducedMotion": false,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 28,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 28
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout.ui-layout--operator > nav.ui-layout__side.ui-menu > div.ui-menu__brand > span.ui-menu__name:nth-of-type(1)",
+          "text": "Siljang 운영자",
+          "need": 4.5,
+          "font": "17px 700"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout.ui-layout--operator > nav.ui-layout__side.ui-menu > div.ui-menu__brand > span.ui-menu__who:nth-of-type(2)",
+          "text": "운영자 한빛",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "ul.ui-menu__list > li:nth-of-type(1) > a.ui-menu__item > span",
+          "text": "영업 신고 확인",
+          "need": 4.5,
+          "font": "15px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "ul.ui-menu__list > li:nth-of-type(2) > a.ui-menu__item > span",
+          "text": "운영자 알림",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > div.ui-layout.ui-layout--operator > nav.ui-layout__side.ui-menu > button.ui-menu__logout",
+          "text": "로그아웃",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > header.ui-layout__head > div.ui-layout__titles > h1.ui-layout__title",
+          "text": "가게 기록 보기",
+          "need": 3,
+          "font": "21px 700"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout.ui-layout--operator > div.ui-layout__page > header.ui-layout__head > span.ui-layout__who.ui-wide-only",
+          "text": "운영자 한빛",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > p:nth-of-type(1)",
+          "text": "이 화면에서 본 것과 연 것은 접속기록에 남아요.",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > p:nth-of-type(2)",
+          "text": "오후 01:34 기준 새로 고침",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(1) > h2",
+          "text": "주문 목록",
+          "need": 4.5,
+          "font": "17.6px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h2",
+          "text": "기록 상세",
+          "need": 4.5,
+          "font": "17.6px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(1)",
+          "text": "주문번호 K7Q3M9 · 확정",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(2)",
+          "text": "픽업 2026. 11. 20. 오후 2:00 · 금액 36,000원",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(3)",
+          "text": "주문자 이** · ***-****-5432",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(4)",
+          "text": "알레르기 답 있음 · 빼야 할 재료 답 없음 · 사진 0장",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h3:nth-of-type(1)",
+          "text": "결제 안내",
+          "need": 4.5,
+          "font": "15px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(1) > dt",
+          "text": "금액",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(1) > dd",
+          "text": "36,000",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(2) > dt",
+          "text": "안내 시각",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(2) > dd",
+          "text": "2026. 11. 12. 오후 1:05",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(3) > dt",
+          "text": "종류",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(3) > dd",
+          "text": "첫 결제",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(4) > dt",
+          "text": "입금 시각",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(4) > dd",
+          "text": "2026. 11. 12. 오후 2:02",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(5) > dt",
+          "text": "상태",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(5) > dd",
+          "text": "입금 확인",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h3:nth-of-type(2)",
+          "text": "환불",
+          "need": 4.5,
+          "font": "15px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > a",
+          "text": "영업 신고 확인 목록으로",
+          "need": 4.5,
+          "font": "15px 400"
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "dimensions": {
+      "body": 1280,
+      "viewport": 1280,
+      "smallTargets": []
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "state": "done",
+    "pageCheck": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:4392/operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/records",
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "env": {
+        "reducedMotion": false,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 28,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 28
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout.ui-layout--operator > nav.ui-layout__side.ui-menu > div.ui-menu__brand > span.ui-menu__name:nth-of-type(1)",
+          "text": "Siljang 운영자",
+          "need": 4.5,
+          "font": "17px 700"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout.ui-layout--operator > nav.ui-layout__side.ui-menu > div.ui-menu__brand > span.ui-menu__who:nth-of-type(2)",
+          "text": "운영자 한빛",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "ul.ui-menu__list > li:nth-of-type(1) > a.ui-menu__item > span",
+          "text": "영업 신고 확인",
+          "need": 4.5,
+          "font": "15px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "ul.ui-menu__list > li:nth-of-type(2) > a.ui-menu__item > span",
+          "text": "운영자 알림",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > div.ui-layout.ui-layout--operator > nav.ui-layout__side.ui-menu > button.ui-menu__logout",
+          "text": "로그아웃",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > header.ui-layout__head > div.ui-layout__titles > h1.ui-layout__title",
+          "text": "가게 기록 보기",
+          "need": 3,
+          "font": "21px 700"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout.ui-layout--operator > div.ui-layout__page > header.ui-layout__head > span.ui-layout__who.ui-wide-only",
+          "text": "운영자 한빛",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > p:nth-of-type(1)",
+          "text": "이 화면에서 본 것과 연 것은 접속기록에 남아요.",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > p:nth-of-type(2)",
+          "text": "오후 01:34 기준 새로 고침",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(1) > h2",
+          "text": "주문 목록",
+          "need": 4.5,
+          "font": "17.6px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h2",
+          "text": "기록 상세",
+          "need": 4.5,
+          "font": "17.6px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(1)",
+          "text": "주문번호 K7Q3M9 · 확정",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(2)",
+          "text": "픽업 2026. 11. 20. 오후 2:00 · 금액 36,000원",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(3)",
+          "text": "주문자 이** · ***-****-5432",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(4)",
+          "text": "알레르기 답 있음 · 빼야 할 재료 답 없음 · 사진 0장",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h3:nth-of-type(1)",
+          "text": "결제 안내",
+          "need": 4.5,
+          "font": "15px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(1) > dt",
+          "text": "금액",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(1) > dd",
+          "text": "36,000",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(2) > dt",
+          "text": "안내 시각",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(2) > dd",
+          "text": "2026. 11. 12. 오후 1:05",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(3) > dt",
+          "text": "종류",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(3) > dd",
+          "text": "첫 결제",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(4) > dt",
+          "text": "입금 시각",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(4) > dd",
+          "text": "2026. 11. 12. 오후 2:02",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(5) > dt",
+          "text": "상태",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "li > dl > div:nth-of-type(5) > dd",
+          "text": "입금 확인",
+          "need": 4.5,
+          "font": "15px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "section.operator-records > div.operator-records-columns.has-selection:nth-of-type(2) > div:nth-of-type(2) > h3:nth-of-type(2)",
+          "text": "환불",
+          "need": 4.5,
+          "font": "15px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "main.ui-layout__main > section.ui-section > section.operator-records > a",
+          "text": "영업 신고 확인 목록으로",
+          "need": 4.5,
+          "font": "15px 400"
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "dimensions": {
+      "body": 1280,
+      "viewport": 1280,
+      "smallTargets": []
+    },
+    "errors": []
+  }
+]

@@ -2,6 +2,7 @@ import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react
 import { Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
 import { OperatorAlertsScreen } from "./OperatorAlertsScreen";
+import { OperatorRecordsScreen } from "./OperatorRecordsScreen";
 import { OperatorShopReview } from "./OperatorShopReview";
 import { OperatorShopsList } from "./OperatorShopsList";
 import {
@@ -156,6 +157,16 @@ export function OperatorArea() {
             onNavigate={follow}
             onSessionExpired={sessionExpired}
             onBusyChange={setContentBusy}
+            blocked={logout === "pending"}
+          />
+        ) : screen.screen === "SCR-050" ? (
+          <OperatorRecordsScreen
+            key={location.pathname + location.search}
+            shopId={location.pathname.split("/")[3] ?? ""}
+            path={location.pathname}
+            onBusyChange={setContentBusy}
+            onNavigate={follow}
+            onSessionExpired={sessionExpired}
             blocked={logout === "pending"}
           />
         ) : (

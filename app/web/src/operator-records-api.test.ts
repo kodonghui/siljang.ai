@@ -146,3 +146,41 @@ it("다음 페이지는 커서를 인코딩하고 API075에만 쓴다", async ()
   expect(url.searchParams.get("cursor")).toBe("opaque_cursor.1234567890");
   expect(url.searchParams.get("limit")).toBe("20");
 });
+it("응답 검증 스키마는 현재 OpenAPI 원본과 같다", async () => {
+  const schemas = (await import("./operator-record-schemas.json")).default;
+  for (const [name, schema] of Object.entries(schemas)) expect(schema).toEqual(api.components.schemas[name]);
+});
+it("열기 응답 안의 다른 상담 ID는 거부한다", async () => {
+  const data = sample(3, "consultation_text");
+  data.consultationText.consultationId = "f8471919-f9c2-5b67-9a89-b047fb281ba4";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => reply(data)),
+  );
+  expect(
+    (
+      await openOperatorOriginal(
+        shop,
+        {
+          targetKind: "consultation_text",
+          targetId: data.targetId,
+          reason: "손님 문의 확인",
+          cursor: consultation.textCursor,
+        },
+        key,
+      )
+    ).ok,
+  ).toBe(false);
+});
+it("카드번호의 원문 보관 표시와 삭제 상담의 메시지는 거부한다", async () => {
+  const data = sample(1, "consultation");
+  data.maskedValues[1].originalKept = true;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => reply(data)),
+  );
+  expect((await fetchOperatorConsultation(shop, data.consultationId)).ok).toBe(false);
+  data.maskedValues[1].originalKept = false;
+  data.status = "deleted";
+  expect((await fetchOperatorConsultation(shop, data.consultationId)).ok).toBe(false);
+});
